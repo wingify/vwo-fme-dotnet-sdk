@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -76,7 +76,7 @@
     <Compile Include="..\VWOFmeSdk\Models\Schemas\SettingsSchema.cs" Link="Models\Schemas\SettingsSchema.cs" />
 
     <!-- Packages -->
-    <Compile Include="..\VWOFmeSdk\Packages\DecisionMaker\DecisionMaker.cs" Link="Packages\DecisionMaker\DecisionMaker.cs" /> 
+    <Compile Include="..\VWOFmeSdk\Packages\DecisionMaker\DecisionMaker.cs" Link="Packages\DecisionMaker\DecisionMaker.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Client\NetworkClient.cs" Link="Packages\NetworkLayer\Client\NetworkClient.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Handlers\RequestHandler.cs" Link="Packages\NetworkLayer\Handlers\RequestHandler.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Manager\NetworkManager.cs" Link="Packages\NetworkLayer\Manager\NetworkManager.cs" />
