@@ -240,7 +240,7 @@ namespace VWOFmeSdk.Utils
         /// <param name="attributeKey"></param>
         /// <param name="attributeValue"></param>
         /// <returns></returns>
-        public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, string attributeKey, string attributeValue)
+        public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, string attributeKey, object attributeValue)
         {
             var properties = GetEventBasePayload(settings, userId, eventName, null, null);
             properties.D.Event.Props.IsCustomEvent = true;

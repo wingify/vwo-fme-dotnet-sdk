@@ -27,43 +27,47 @@ using VWOFmeSdk.Packages.DecisionMaker;
 using static VWOFmeSdk.Utils.CampaignUtil;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Core;
 using VWOFmeSdk.Decorators;
+using VWOFmeSdk.Utils;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 
 namespace VWOFmeSdk.Utils
 {
     public static class DecisionUtil
     {
         /// <summary>
-        /// Check if user is part of campaign
+        /// This method checks for whitelisting and pre-segmentation for a user in a campaign.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="feature"></param>
-        /// <param name="campaign"></param>
-        /// <param name="context"></param>
-        /// <param name="evaluatedFeatureMap"></param>
-        /// <param name="megGroupWinnerCampaigns"></param>
-        /// <param name="storageService"></param>
-        /// <param name="decision"></param>
-        /// <returns></returns>
+        /// <param name="settings">The settings object containing the account details.</param>
+        /// <param name="feature">The feature associated with the campaign.</param>
+        /// <param name="campaign">The campaign being evaluated.</param>
+        /// <param name="context">The user context including user ID and custom variables.</param>
+        /// <param name="evaluatedFeatureMap">A dictionary containing evaluated features for tracking.</param>
+        /// <param name="megGroupWinnerCampaigns">A dictionary to track winning campaigns in mutually exclusive groups (MEG).</param>
+        /// <param name="storageService">The storage service used for retrieving stored data.</param>
+        /// <param name="decision">A dictionary to store decision-related variables.</param>
+        /// <returns>A dictionary indicating whether pre-segmentation was successful and the whitelisted object if any.</returns>
         public static Dictionary<string, object> CheckWhitelistingAndPreSeg(
             Settings settings,
             Feature feature,
             Campaign campaign,
             VWOContext context,
             Dictionary<string, object> evaluatedFeatureMap,
-            Dictionary<int, int> megGroupWinnerCampaigns,
+            Dictionary<int, string> megGroupWinnerCampaigns,
             StorageService storageService,
             Dictionary<string, object> decision)
         {
+            // Generate a unique user ID for VWO
             string vwoUserId = UUIDUtils.GetUUID(context.Id, settings.AccountId.ToString());
             int campaignId = campaign.Id;
 
+            // Check if the campaign type is AB
             if (campaign.Type == CampaignTypeEnum.AB.GetValue())
             {
                 // Set _vwoUserId for variation targeting variables
                 context.VariationTargetingVariables["_vwoUserId"] = campaign.IsUserListEnabled ? vwoUserId : context.Id;
                 decision["variationTargetingVariables"] = context.VariationTargetingVariables;
 
-                // Check if the campaign satisfies the whitelisting
+                // Check if the campaign satisfies the whitelisting criteria
                 if (campaign.IsForcedVariationEnabled)
                 {
                     var whitelistedVariation = CheckCampaignWhitelisting(campaign, context);
@@ -78,6 +82,7 @@ namespace VWOFmeSdk.Utils
                 }
                 else
                 {
+                    // Log that whitelisting was skipped
                     LoggerService.Log(LogLevelEnum.INFO, "WHITELISTING_SKIP", new Dictionary<string, string>
                     {
                         { "userId", context.Id },
@@ -90,23 +95,44 @@ namespace VWOFmeSdk.Utils
             context.CustomVariables["_vwoUserId"] = campaign.IsUserListEnabled ? vwoUserId : context.Id;
             decision["customVariables"] = context.CustomVariables;
 
-            // Check if the campaign is part of a mutually exclusive group (MEG)
             var variationId = campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue()? (int?)campaign.Variations[0].Id : null;
-            var groupDetails = CampaignUtil.GetGroupDetailsIfCampaignPartOfIt(settings, campaignId, variationId);
+
+            // Check if the campaign is part of a mutually exclusive group (MEG)
+            var groupDetails = CampaignUtil.GetGroupDetailsIfCampaignPartOfIt(
+                settings,
+                campaignId,
+                variationId);
             string groupId = groupDetails.ContainsKey("groupId") ? groupDetails["groupId"] : null;
 
+            // Handle MEG (Mutually Exclusive Group) logic
             if (!string.IsNullOrEmpty(groupId))
             {
                 int groupIdInt = int.Parse(groupId);
-                if (megGroupWinnerCampaigns.TryGetValue(groupIdInt, out int groupWinnerCampaignId))
+                if (megGroupWinnerCampaigns.TryGetValue(groupIdInt, out string groupWinnerCampaignId))
                 {
-                    if (!string.IsNullOrEmpty(groupWinnerCampaignId.ToString()) && groupWinnerCampaignId == campaignId)
+                    if (campaign.Type == CampaignTypeEnum.AB.GetValue())
                     {
-                        return new Dictionary<string, object>
+                        // Check if the campaign is the winner of the group
+                        if (groupWinnerCampaignId == campaignId.ToString())
                         {
-                            {"preSegmentationResult", true},
-                            {"whitelistedObject", null}
-                        };
+                            return new Dictionary<string, object>
+                            {
+                                {"preSegmentationResult", true},
+                                {"whitelistedObject", null}
+                            };
+                        }
+                    }
+                    else if (campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue())
+                    {
+                        // Check if the campaign is the winner of the group
+                        if (groupWinnerCampaignId == campaignId.ToString() + "_" + campaign.Variations[0].Id.ToString())
+                        {
+                            return new Dictionary<string, object>
+                            {
+                                {"preSegmentationResult", true},
+                                {"whitelistedObject", null}
+                            };
+                        }
                     }
                     // As group is already evaluated, no need to check again, return false directly
                     return new Dictionary<string, object>
@@ -117,9 +143,8 @@ namespace VWOFmeSdk.Utils
                 }
                 else
                 {
-                    // Check in storage if the group is already evaluated for the user
                     var storedData = new StorageDecorator().GetFeatureFromStorage(
-                        $"_vwo_meta_meg_{groupId}",
+                        $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}",
                         context,
                         storageService
                     );
@@ -140,7 +165,7 @@ namespace VWOFmeSdk.Utils
                                 { "whitelistedObject", null }
                             };
                         }
-                        megGroupWinnerCampaigns[groupIdInt] = int.Parse(storedData["experimentId"].ToString());
+                        megGroupWinnerCampaigns[groupIdInt] = storedData["experimentId"].ToString();
                         return new Dictionary<string, object>
                         {
                             {"preSegmentationResult", false},
@@ -150,7 +175,7 @@ namespace VWOFmeSdk.Utils
                 }
             }
 
-            // Check campaign's pre-segmentation if whitelisting is skipped/failed and campaign not part of any MEG groups
+            // If Whitelisting is skipped/failed and the campaign is not part of any MEG Groups
             bool isPreSegmentationPassed = new CampaignDecisionService().GetPreSegmentationDecision(campaign, context);
 
             if (isPreSegmentationPassed && !string.IsNullOrEmpty(groupId))
@@ -166,14 +191,53 @@ namespace VWOFmeSdk.Utils
 
                 if (winnerCampaign != null && winnerCampaign.Id == campaignId)
                 {
+                    if (winnerCampaign.Type == CampaignTypeEnum.AB.GetValue())
+                    {
+                        return new Dictionary<string, object>
+                        {
+                            { "preSegmentationResult", true },
+                            { "whitelistedObject", null }
+                        };
+                    }
+                    else if (winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() && winnerCampaign.Variations[0].Id == campaign.Variations[0].Id)
+                    {
+                        return new Dictionary<string, object>
+                        {
+                            { "preSegmentationResult", true },
+                            { "whitelistedObject", null }
+                        };
+                    }
+                    else
+                    {
+                        // Update the MEG group winner campaigns map for Personalize
+                        megGroupWinnerCampaigns[int.Parse(groupId)] = $"{winnerCampaign.Id}_{winnerCampaign.Variations[0].Id}";
+                        return new Dictionary<string, object>
+                        {
+                            { "preSegmentationResult", false },
+                            { "whitelistedObject", null }
+                        };
+                    }
+                }
+                else if (winnerCampaign != null)
+                {
+                    // Update the MEG group winner campaigns map
+                    if (winnerCampaign.Type == CampaignTypeEnum.AB.GetValue())
+                    {
+                        megGroupWinnerCampaigns[int.Parse(groupId)] = winnerCampaign.Id.ToString();
+                    }
+                    else if (winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue())
+                    {
+                        megGroupWinnerCampaigns[int.Parse(groupId)] = $"{winnerCampaign.Id}_{winnerCampaign.Variations[0].Id}";
+                    }
                     return new Dictionary<string, object>
                     {
-                        { "preSegmentationResult", true },
+                        { "preSegmentationResult", false },
                         { "whitelistedObject", null }
                     };
                 }
 
-                megGroupWinnerCampaigns[int.Parse(groupId)] = winnerCampaign?.Id ?? 0;
+                // No winner found, mark group as evaluated with no winner
+                megGroupWinnerCampaigns[int.Parse(groupId)] = "-1";
                 return new Dictionary<string, object>
                 {
                     { "preSegmentationResult", false },
@@ -189,17 +253,19 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Evaluate the traffic for the user and get the allotted variation
+        /// This method evaluates the traffic for a user and returns the allotted variation.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="campaign"></param>
-        /// <param name="userId"></param>
-        /// <returns></returns>
+        /// <param name="settings">The settings object containing the account details.</param>
+        /// <param name="campaign">The campaign being evaluated.</param>
+        /// <param name="userId">The unique ID assigned to the user.</param>
+        /// <returns>The variation allotted to the user, or null if no variation is allotted.</returns>
         public static Variation EvaluateTrafficAndGetVariation(Settings settings, Campaign campaign, string userId)
         {
+            // Get the variation allotted to the user
             var variation = new CampaignDecisionService().GetVariationAllotted(userId, settings.AccountId.ToString(), campaign);
             if (variation == null)
             {
+                // Log that the user did not get any variation
                 LoggerService.Log(LogLevelEnum.INFO, "USER_CAMPAIGN_BUCKET_INFO", new Dictionary<string, string>
                 {
                     { "userId", userId },
@@ -209,6 +275,7 @@ namespace VWOFmeSdk.Utils
                 return null;
             }
 
+            // Log that the user got a specific variation
             LoggerService.Log(LogLevelEnum.INFO, "USER_CAMPAIGN_BUCKET_INFO", new Dictionary<string, string>
             {
                 { "userId", userId },
@@ -219,17 +286,18 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Check if the user is whitelisted for the campaign
+        /// This method checks if the user is whitelisted for the campaign.
         /// </summary>
-        /// <param name="campaign"></param>
-        /// <param name="context"></param>
-        /// <returns></returns>
+        /// <param name="campaign">The campaign being evaluated.</param>
+        /// <param name="context">The user context including user ID and custom variables.</param>
+        /// <returns>A dictionary containing the whitelisted variation and its details if the user is whitelisted, otherwise null.</returns>
         private static Dictionary<string, object> CheckCampaignWhitelisting(Campaign campaign, VWOContext context)
         {
             var whitelistingResult = EvaluateWhitelisting(campaign, context);
             var status = whitelistingResult != null ? StatusEnum.PASSED : StatusEnum.FAILED;
             var variationString = whitelistingResult?["variationName"]?.ToString() ?? string.Empty;
 
+            // Log the result of whitelisting
             LoggerService.Log(LogLevelEnum.INFO, "WHITELISTING_STATUS", new Dictionary<string, string>
             {
                 { "userId", context.Id },
@@ -242,17 +310,19 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Evaluate the whitelisting for the user
+        /// This method evaluates the whitelisting criteria for a user in a campaign.
         /// </summary>
-        /// <param name="campaign"></param>
-        /// <param name="context"></param>
-        /// <returns></returns>
+        /// <param name="campaign">The campaign being evaluated.</param>
+        /// <param name="context">The user context including user ID and custom variables.</param>
+        /// <returns>A dictionary containing the whitelisted variation and its details if the user meets the whitelisting criteria, otherwise null.</returns>
         private static Dictionary<string, object> EvaluateWhitelisting(Campaign campaign, VWOContext context)
         {
             var targetedVariations = new List<Variation>();
 
+            // Loop through each variation in the campaign
             foreach (var variation in campaign.Variations)
             {
+                // Skip if the variation has no segments defined
                 if (variation.Segments != null && variation.Segments.Count == 0)
                 {
                     LoggerService.Log(LogLevelEnum.INFO, "WHITELISTING_SKIP", new Dictionary<string, string>
@@ -264,9 +334,12 @@ namespace VWOFmeSdk.Utils
                     continue;
                 }
 
+                // Evaluate segmentation for each variation
                 if (variation.Segments != null)
                 {
-                    var segmentationResult = SegmentationManager.GetInstance().ValidateSegmentation(variation.Segments, (Dictionary<string, object>)context.VariationTargetingVariables);
+                    var segmentationResult = SegmentationManager.GetInstance().ValidateSegmentation(
+                        variation.Segments,
+                        (Dictionary<string, object>)context.VariationTargetingVariables);
                     if (segmentationResult)
                     {
                         targetedVariations.Add(FunctionUtil.CloneObject(variation));
@@ -276,17 +349,18 @@ namespace VWOFmeSdk.Utils
 
             Variation whitelistedVariation = null;
 
+            // If multiple variations are targeted, scale the weights and get the variation
             if (targetedVariations.Count > 1)
             {
-                ScaleVariationWeights(targetedVariations);
+                CampaignUtil.ScaleVariationWeights(targetedVariations);
                 int currentAllocation = 0;
                 foreach (var variation in targetedVariations)
                 {
-                    int stepFactor = AssignRangeValues(variation, currentAllocation);
+                    int stepFactor = CampaignUtil.AssignRangeValues(variation, currentAllocation);
                     currentAllocation += stepFactor;
                 }
 
-                whitelistedVariation = new CampaignDecisionService().GetVariation(targetedVariations, new DecisionMaker().CalculateBucketValue(GetBucketingSeed(context.Id, campaign, null)));
+                whitelistedVariation = new CampaignDecisionService().GetVariation(targetedVariations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(context.Id, campaign, null)));
             }
             else if (targetedVariations.Count == 1)
             {

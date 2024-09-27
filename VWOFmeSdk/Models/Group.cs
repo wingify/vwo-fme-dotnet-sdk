@@ -18,42 +18,52 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace VWOFmeSdk.Models
 {
     public class Groups
     {
         private string name;
-        private List<int> campaigns;
-        private int et;
-        private List<int> p;
-        private Dictionary<string, int> wt;
+        private List<string> campaigns;
+        private int? et;
+        private List<string> p = new List<string>();
+        private Dictionary<string, double> wt = new Dictionary<string, double>();
 
+        [JsonProperty("name")]
         public string Name
         {
             get { return name; }
             set { name = value; }
         }
 
-        public List<int> Campaigns
+        [JsonProperty("campaigns")]
+        public List<string> Campaigns
         {
             get { return campaigns; }
             set { campaigns = value; }
         }
 
-        public int Et
+        [JsonProperty("et")]
+        public int? Et
         {
-            get { return et; }
+            get
+            {
+                // set default to random
+                return et ?? 1;
+            }
             set { et = value; }
         }
 
-        public List<int> P
+        [JsonProperty("p")]
+        public List<string> P
         {
             get { return p; }
             set { p = value; }
         }
 
-        public Dictionary<string, int> Wt
+        [JsonProperty("wt")]
+        public Dictionary<string, double> Wt
         {
             get { return wt; }
             set { wt = value; }

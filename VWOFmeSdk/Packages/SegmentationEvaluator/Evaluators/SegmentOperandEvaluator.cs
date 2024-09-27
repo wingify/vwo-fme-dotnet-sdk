@@ -46,7 +46,7 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
 
             if (operandValue.Contains("inlist"))
             {
-                var listIdPattern = new Regex("inlist\\((\\w+:\\d+)\\)");
+                var listIdPattern = new Regex("inlist\\(([^)]+)\\)");
                 var matcher = listIdPattern.Match(operandValue);
                 if (!matcher.Success)
                 {

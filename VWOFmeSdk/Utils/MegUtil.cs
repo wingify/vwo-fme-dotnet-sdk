@@ -28,31 +28,32 @@ using VWOFmeSdk.Services;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Packages.DecisionMaker;
 using VWOFmeSdk.Decorators;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Utils
 {
     public static class MegUtil
     {
         /// <summary>
-        /// Evaluate the feature rollout rules
+        /// Evaluates the feature rollout rules and determines the winner campaign.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="feature"></param>
-        /// <param name="groupId"></param>
-        /// <param name="evaluatedFeatureMap"></param>
-        /// <param name="context"></param>
-        /// <param name="storageService"></param>
-        /// <returns></returns>
-        public static Variation EvaluateGroups(Settings settings, Feature feature, int groupId,
-                                               Dictionary<string, object> evaluatedFeatureMap, VWOContext context, StorageService storageService)
+        /// <param name="settings">Settings object containing feature and campaign information.</param>
+        /// <param name="feature">Feature object being evaluated.</param>
+        /// <param name="groupId">Group ID of the campaigns.</param>
+        /// <param name="evaluatedFeatureMap">Dictionary of evaluated features.</param>
+        /// <param name="context">Context object containing user information.</param>
+        /// <param name="storageService">Storage service for data persistence.</param>
+        /// <returns>Winner variation if any.</returns>
+        public static Variation EvaluateGroups(Settings settings, Feature feature, int groupId, 
+                                       Dictionary<string, object> evaluatedFeatureMap, VWOContext context, StorageService storageService)
         {
             var featureToSkip = new List<string>();
             var campaignMap = new Dictionary<string, List<Campaign>>();
 
             // Get all feature keys and all campaignIds from the groupId
             var featureKeysAndGroupCampaignIds = GetFeatureKeysFromGroup(settings, groupId);
-            var featureKeys = featureKeysAndGroupCampaignIds["featureKeys"].Cast<string>().ToList();
-            var groupCampaignIds = featureKeysAndGroupCampaignIds["groupCampaignIds"].Cast<string>().ToList();
+            var featureKeys = ((List<object>)featureKeysAndGroupCampaignIds["featureKeys"]).Cast<string>().ToList();
+            var groupCampaignIds = ((List<object>)featureKeysAndGroupCampaignIds["groupCampaignIds"]).Cast<string>().ToList();
 
             foreach (var featureKey in featureKeys)
             {
@@ -72,18 +73,18 @@ namespace VWOFmeSdk.Utils
                     {
                         if (feat.Key == featureKey)
                         {
-                            foreach (var rule in feat.RulesLinkedCampaign)
+                            foreach (var campaign in feat.RulesLinkedCampaign)
                             {
-                                if (groupCampaignIds.Contains(rule.Id.ToString()) || groupCampaignIds.Contains($"{rule.Id}_{rule.Variations[0].Id}"))
+                                if (groupCampaignIds.Contains(campaign.Id.ToString()) || groupCampaignIds.Contains($"{campaign.Id}_{campaign.Variations[0].Id}"))
                                 {
                                     if (!campaignMap.ContainsKey(featureKey))
                                     {
                                         campaignMap[featureKey] = new List<Campaign>();
                                     }
                                     // Check if the campaign is already present in the campaignMap for the feature
-                                    if (!campaignMap[featureKey].Any(item => item.Key == rule.Key))
+                                    if (!campaignMap[featureKey].Any(c => c.RuleKey == campaign.RuleKey))
                                     {
-                                        campaignMap[featureKey].Add(rule);
+                                        campaignMap[featureKey].Add(campaign);
                                     }
                                 }
                             }
@@ -102,9 +103,9 @@ namespace VWOFmeSdk.Utils
         /// <summary>
         /// Get all feature keys and all campaignIds from the groupId    
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="groupId"></param>
-        /// <returns></returns>
+        /// <param name="settings">Settings object containing feature and campaign information.</param>
+        /// <param name="groupId">Group ID of the campaigns.</param>
+        /// <returns>Dictionary with feature keys and campaign IDs.</returns>
         public static Dictionary<string, List<object>> GetFeatureKeysFromGroup(Settings settings, int groupId)
         {
             var groupCampaignIds = CampaignUtil.GetCampaignsByGroupId(settings, groupId);
@@ -118,17 +119,22 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Get all eligible campaigns for the feature
+        /// Evaluates the feature rollout rules for a given feature.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="feature"></param>
-        /// <param name="evaluatedFeatureMap"></param>
-        /// <param name="featureToSkip"></param>
-        /// <param name="context"></param>
-        /// <param name="storageService"></param>
-        /// <returns></returns>
-        private static bool IsRolloutRuleForFeaturePassed(Settings settings, Feature feature, Dictionary<string, object> evaluatedFeatureMap,
-                                                          List<string> featureToSkip, VWOContext context, StorageService storageService)
+        /// <param name="settings">Settings object containing feature and campaign information.</param>
+        /// <param name="feature">Feature object being evaluated.</param>
+        /// <param name="evaluatedFeatureMap">Dictionary of evaluated features.</param>
+        /// <param name="featureToSkip">List of features to skip.</param>
+        /// <param name="context">Context object containing user information.</param>
+        /// <param name="storageService">Storage service for data persistence.</param>
+        /// <returns>Boolean indicating if the rollout rule passed.</returns>
+        private static bool IsRolloutRuleForFeaturePassed(
+            Settings settings,
+            Feature feature,
+            Dictionary<string, object> evaluatedFeatureMap,
+            List<string> featureToSkip,
+            VWOContext context,
+            StorageService storageService)
         {
             if (evaluatedFeatureMap.ContainsKey(feature.Key) &&
                 ((Dictionary<string, object>)evaluatedFeatureMap[feature.Key]).ContainsKey("rolloutId"))
@@ -176,15 +182,18 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Get all eligible campaigns for the feature
+        /// Retrieves eligible campaigns based on the provided campaign map and context.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="campaignMap"></param>
-        /// <param name="context"></param>
-        /// <param name="storageService"></param>
-        /// <returns></returns>
-        private static Dictionary<string, object> GetEligibleCampaigns(Settings settings, Dictionary<string, List<Campaign>> campaignMap,
-                                                                       VWOContext context, StorageService storageService)
+        /// <param name="settings">Settings object containing feature and campaign information.</param>
+        /// <param name="campaignMap">Dictionary mapping features to their campaigns.</param>
+        /// <param name="context">Context object containing user information.</param>
+        /// <param name="storageService">Storage service for data persistence.</param>
+        /// <returns>Dictionary with eligible campaigns, campaigns with storage, and ineligible campaigns.</returns>
+        private static Dictionary<string, object> GetEligibleCampaigns(
+            Settings settings,
+            Dictionary<string, List<Campaign>> campaignMap,
+            VWOContext context,
+            StorageService storageService)
         {
             var eligibleCampaigns = new List<Campaign>();
             var eligibleCampaignsWithStorage = new List<Campaign>();
@@ -253,20 +262,24 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Find the winner campaign among the eligible campaigns
+        /// Find the winner campaign among the eligible campaigns.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="featureKey"></param>
-        /// <param name="eligibleCampaigns"></param>
-        /// <param name="eligibleCampaignsWithStorage"></param>
-        /// <param name="groupId"></param>
-        /// <param name="context"></param>
-        /// <param name="storageService"></param>
-        /// <returns></returns>
-        private static Variation FindWinnerCampaignAmongEligibleCampaigns(Settings settings, string featureKey,
-                                                                          List<Campaign> eligibleCampaigns,
-                                                                          List<Campaign> eligibleCampaignsWithStorage,
-                                                                          int groupId, VWOContext context, StorageService storageService)
+        /// <param name="settings">Settings object containing feature and campaign information.</param>
+        /// <param name="featureKey">Key of the feature being evaluated.</param>
+        /// <param name="eligibleCampaigns">List of eligible campaigns.</param>
+        /// <param name="eligibleCampaignsWithStorage">List of eligible campaigns with storage.</param>
+        /// <param name="groupId">Group ID of the campaigns.</param>
+        /// <param name="context">Context object containing user information.</param>
+        /// <param name="storageService">Storage service for data persistence.</param>
+        /// <returns>Winner variation if any.</returns>
+        private static Variation FindWinnerCampaignAmongEligibleCampaigns(
+            Settings settings,
+            string featureKey,
+            List<Campaign> eligibleCampaigns,
+            List<Campaign> eligibleCampaignsWithStorage,
+            int groupId,
+            VWOContext context,
+            StorageService storageService)
         {
             var campaignIds = CampaignUtil.GetCampaignIdsFromFeatureKey(settings, featureKey);
             Variation winnerCampaign = null;
@@ -274,14 +287,14 @@ namespace VWOFmeSdk.Utils
             try
             {
                 var group = settings.Groups[groupId.ToString()];
-                int megAlgoNumber = group != null && group.Et != 0 ? group.Et : ConstantsNamespace.Constants.RANDOM_ALGO;
+                int megAlgoNumber = group != null && group.Et.HasValue && group.Et.Value != 0 ? group.Et.Value : ConstantsNamespace.Constants.RANDOM_ALGO;
                 if (eligibleCampaignsWithStorage.Count == 1)
                 {
                     var campaignModel = JsonConvert.SerializeObject(eligibleCampaignsWithStorage[0]);
                     winnerCampaign = JsonConvert.DeserializeObject<Variation>(campaignModel);
                     LoggerService.Log(LogLevelEnum.INFO, "MEG_WINNER_CAMPAIGN", new Dictionary<string, string>
                     {
-                        {"campaignKey", winnerCampaign.Key},
+                        {"campaignKey", winnerCampaign.Type == CampaignTypeEnum.AB.GetValue() ? winnerCampaign.Key : winnerCampaign.Name + "_" + winnerCampaign.RuleKey},
                         {"groupId", groupId.ToString()},
                         {"userId", context.Id}
                     });
@@ -303,7 +316,7 @@ namespace VWOFmeSdk.Utils
                         winnerCampaign = JsonConvert.DeserializeObject<Variation>(campaignModel);
                         LoggerService.Log(LogLevelEnum.INFO, "MEG_WINNER_CAMPAIGN", new Dictionary<string, string>
                         {
-                            {"campaignKey", winnerCampaign.Key},
+                            {"campaignKey", winnerCampaign.Type == CampaignTypeEnum.AB.GetValue() ? winnerCampaign.Key : winnerCampaign.Name + "_" + winnerCampaign.RuleKey},
                             {"groupId", groupId.ToString()},
                             {"userId", context.Id},
                             {"algo", ""}
@@ -327,16 +340,21 @@ namespace VWOFmeSdk.Utils
             return winnerCampaign;
         }
 
-    /// <summary>
-    /// Normalize the weights of all the shortlisted campaigns and find the winning campaign
-    /// </summary>
-    /// <param name="shortlistedCampaigns"></param>
-    /// <param name="context"></param>
-    /// <param name="calledCampaignIds"></param>
-    /// <param name="groupId"></param>
-    /// <param name="storageService"></param>
-    /// <returns></returns>
-        private static Variation NormalizeWeightsAndFindWinningCampaign(List<Campaign> shortlistedCampaigns, VWOContext context, List<int> calledCampaignIds, int groupId, StorageService storageService)
+        /// <summary>
+        /// Normalize the weights of all the shortlisted campaigns and find the winning campaign.
+        /// </summary>
+        /// <param name="shortlistedCampaigns">List of shortlisted campaigns.</param>
+        /// <param name="context">Context object containing user information.</param>
+        /// <param name="calledCampaignIds">List of called campaign IDs.</param>
+        /// <param name="groupId">Group ID of the campaigns.</param>
+        /// <param name="storageService">Storage service for data persistence.</param>
+        /// <returns>Winner variation if any.</returns>
+        private static Variation NormalizeWeightsAndFindWinningCampaign(
+            List<Campaign> shortlistedCampaigns,
+            VWOContext context,
+            List<int> calledCampaignIds,
+            int groupId,
+            StorageService storageService)
         {
             try
             {
@@ -355,11 +373,10 @@ namespace VWOFmeSdk.Utils
                 var winnerCampaign = new CampaignDecisionService().GetVariation(
                     variations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(context.Id, null, groupId))
                 );
-
-                // Log the winner campaign
+        
                 LoggerService.Log(LogLevelEnum.INFO, "MEG_WINNER_CAMPAIGN", new Dictionary<string, string>
                 {
-                    {"campaignKey", winnerCampaign.Key},
+                    {"campaignKey", winnerCampaign.Type == CampaignTypeEnum.AB.GetValue() ? winnerCampaign.Key : winnerCampaign.Key + "_" + winnerCampaign.RuleKey},
                     {"groupId", groupId.ToString()},
                     {"userId", context.Id},
                     {"algo", "using random algorithm"}
@@ -374,11 +391,11 @@ namespace VWOFmeSdk.Utils
                     // Winner campaign is not in the called feature, store it in storage
                     new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
                     {
-                        { "featureKey", $"_vwo_meta_meg_{groupId}" },
-                        { "context", context },
+                        { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
+                        { "user", context.Id },
                         { "experimentId", winnerCampaign.Id },
                         { "experimentKey", winnerCampaign.Key },
-                        { "experimentVariationId", -1 }
+                        { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }
                     }, storageService);
                 }
             }
@@ -390,59 +407,77 @@ namespace VWOFmeSdk.Utils
             return null;
         }
         /// <summary>
-        /// Get the winning campaign using advanced algo
+        /// Get the winning campaign using advanced algorithm.
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="shortlistedCampaigns"></param>
-        /// <param name="context"></param>
-        /// <param name="calledCampaignIds"></param>
-        /// <param name="groupId"></param>
-        /// <param name="storageService"></param>
-        /// <returns></returns>
-        private static Variation GetCampaignUsingAdvancedAlgo(Settings settings, List<Campaign> shortlistedCampaigns,
-                                                              VWOContext context, List<int> calledCampaignIds, int groupId, StorageService storageService)
+        /// <param name="settings">Settings object containing feature and campaign information.</param>
+        /// <param name="shortlistedCampaigns">List of shortlisted campaigns.</param>
+        /// <param name="context">Context object containing user information.</param>
+        /// <param name="calledCampaignIds">List of called campaign IDs.</param>
+        /// <param name="groupId">Group ID of the campaigns.</param>
+        /// <param name="storageService">Storage service for data persistence.</param>
+        /// <returns>Winner variation if any.</returns>
+        private static Variation GetCampaignUsingAdvancedAlgo(
+            Settings settings,
+            List<Campaign> shortlistedCampaigns,
+            VWOContext context,
+            List<int> calledCampaignIds,
+            int groupId,
+            StorageService storageService)
         {
             Variation winnerCampaign = null;
+            bool found = false; // Flag to check whether winnerCampaign has been found or not
+            
+            try {
+                //var group = settings.Groups.TryGetValue(groupId, out var groupData) ? groupData : null;
+                var groupIdString = groupId.ToString();
+                var group = settings.Groups.TryGetValue(groupIdString, out var groupData) ? groupData : null;
 
-            try
-            {
+                var priorityOrder = group?.P ?? new List<string>();
+                var wt = group?.Wt ?? new Dictionary<string, double>();
 
-                if (!settings.Groups.TryGetValue(groupId.ToString(), out var group))
+                for (int i = 0; i < priorityOrder.Count; i++)
                 {
-                    LoggerService.Log(LogLevelEnum.INFO,$"Group with ID {groupId} not found in settings.");
-                }
-
-                var priorityOrder = group?.P?.Any() == true ? group.P : new List<int>();
-                var wt = group?.Wt?.Any() == true ? ConvertWtToMap(group.Wt) : new Dictionary<int, int>();
-
-                foreach (var integer in priorityOrder)
-                {
-                    foreach (var shortlistedCampaign in shortlistedCampaigns)
+                    for (int j = 0; j < shortlistedCampaigns.Count; j++)
                     {
-                        if (shortlistedCampaign.Id == integer)
+                        if (shortlistedCampaigns[j].Id.ToString() == priorityOrder[i])
                         {
-                            var campaignModel = JsonConvert.SerializeObject(FunctionUtil.CloneObject(shortlistedCampaign));
+                            var campaignModel = JsonConvert.SerializeObject(FunctionUtil.CloneObject(shortlistedCampaigns[j]));
                             winnerCampaign = JsonConvert.DeserializeObject<Variation>(campaignModel);
+                            //winnerCampaign = FunctionUtil.CloneObject(shortlistedCampaigns[j]);
+                            found = true;
+                            break;
+                        }
+                        else if (shortlistedCampaigns[j].Id + "_" + shortlistedCampaigns[j].Variations[0].Id == priorityOrder[i])
+                        {
+                            var campaignModel = JsonConvert.SerializeObject(FunctionUtil.CloneObject(shortlistedCampaigns[j]));
+                            winnerCampaign = JsonConvert.DeserializeObject<Variation>(campaignModel);
+                            //winnerCampaign = FunctionUtil.CloneObject(shortlistedCampaigns[j]);
+                            found = true;
                             break;
                         }
                     }
-
-                    if (winnerCampaign != null)
-                    {
+                    if (found)
                         break;
-                    }
                 }
 
+                // If winnerCampaign not found through Priority, then go for weighted random distribution
                 if (winnerCampaign == null)
                 {
                     var participatingCampaignList = new List<Campaign>();
 
                     foreach (var campaign in shortlistedCampaigns)
                     {
-                        if (wt.TryGetValue(campaign.Id, out var weight))
+                        var campaignId = campaign.Id.ToString();
+                        if (wt.ContainsKey(campaignId))
                         {
                             var clonedCampaign = FunctionUtil.CloneObject(campaign);
-                            clonedCampaign.Weight = weight;
+                            clonedCampaign.Weight = (int)Math.Floor(wt[campaignId]);
+                            participatingCampaignList.Add(clonedCampaign);
+                        }
+                        else if (wt.ContainsKey(campaignId + "_" + campaign.Variations[0].Id.ToString()))
+                        {
+                            var clonedCampaign = FunctionUtil.CloneObject(campaign);
+                            clonedCampaign.Weight = (int)Math.Floor(wt[campaignId + "_" + campaign.Variations[0].Id.ToString()]);
                             participatingCampaignList.Add(clonedCampaign);
                         }
                     }
@@ -452,35 +487,43 @@ namespace VWOFmeSdk.Utils
                         .ToList();
 
                     CampaignUtil.SetCampaignAllocation(variations);
-
                     winnerCampaign = new CampaignDecisionService().GetVariation(
                         variations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(context.Id, null, groupId))
                     );
                 }
 
-                LoggerService.Log(LogLevelEnum.INFO, "MEG_WINNER_CAMPAIGN", new Dictionary<string, string>
+                // Logging winner campaign or if no winner is found
+                if (winnerCampaign != null)
                 {
-                    {"campaignKey", winnerCampaign.Name},
-                    {"groupId", groupId.ToString()},
-                    {"userId", context.Id},
-                    {"algo", "using advanced algorithm"}
-                });
-
-                if (calledCampaignIds.Contains(winnerCampaign.Id))
-                {
-                    return winnerCampaign;
-                }
-                else if (winnerCampaign != null)
-                {
-                    // Winner campaign is not in the called feature, store it in storage
-                    new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
+                    LoggerService.Log(LogLevelEnum.INFO, "MEG_WINNER_CAMPAIGN", new Dictionary<string, string>
                     {
-                        { "featureKey", $"_vwo_meta_meg_{groupId}" },
-                        { "context", context },
-                        { "experimentId", winnerCampaign.Id },
-                        { "experimentKey", winnerCampaign.Key },
-                        { "experimentVariationId", -1 }
-                    }, storageService);
+                        {"campaignKey", winnerCampaign.Type == CampaignTypeEnum.AB.GetValue() ? winnerCampaign.Key : winnerCampaign.Key + "_" + winnerCampaign.RuleKey},
+                        {"groupId", groupId.ToString()},
+                        {"userId", context.Id},
+                        {"algo", "using advanced algorithm"}
+                    });
+
+                    // Check if the winner is among the called campaign IDs
+                    if (winnerCampaign != null && calledCampaignIds.Contains(winnerCampaign.Id))
+                    {
+                        return winnerCampaign;
+                    }
+                    else if (winnerCampaign != null)
+                    {
+                        // Store the winner campaign in storage if not already part of called feature
+                        new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
+                        {
+                            { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
+                            { "user", context.Id },
+                            { "experimentId", winnerCampaign.Id },
+                            { "experimentKey", winnerCampaign.Key },
+                            { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }
+                        }, storageService);
+                    }
+                }
+                else
+                {
+                    LoggerService.Log(LogLevelEnum.INFO, $"No winner campaign found for MEG group: {groupId}");
                 }
             }
             catch (Exception exception)
@@ -488,8 +531,10 @@ namespace VWOFmeSdk.Utils
                 LoggerService.Log(LogLevelEnum.ERROR, "MEG: error inside GetCampaignUsingAdvancedAlgo " + exception.Message);
             }
 
-            return null;
+            return winnerCampaign;
         }
+
+
 
         private static Dictionary<int, int> ConvertWtToMap(Dictionary<string, int> wt)
         {

@@ -33,6 +33,7 @@ namespace VWOFmeSdk.Models
         private List<Variation> variations = new List<Variation>();
         private Dictionary<string, object> segments = new Dictionary<string, object>();
         private string ruleKey;
+        private string type;
 
         public int Id
         {
@@ -92,6 +93,12 @@ namespace VWOFmeSdk.Models
         {
             get { return ruleKey; }
             set { ruleKey = value; }
+        }
+
+         public string Type
+        {
+            get { return type; }
+            set { type = value; }
         }
     }
 }

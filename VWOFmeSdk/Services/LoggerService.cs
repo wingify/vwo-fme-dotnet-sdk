@@ -42,11 +42,6 @@ namespace VWOFmeSdk.Services
             // Read the log files from the specific directory
             string messagesDirectory = Path.Combine(AppContext.BaseDirectory, "Packages", "Logger", "Messages");
 
-            if (!Directory.Exists(messagesDirectory))
-            {
-                Console.WriteLine("Directory does not exist.");
-            }
-            
             DebugMessages = ReadLogFiles(Path.Combine(messagesDirectory, "debug-messages.json"));
             InfoMessages = ReadLogFiles(Path.Combine(messagesDirectory, "info-messages.json"));
             ErrorMessages = ReadLogFiles(Path.Combine(messagesDirectory, "error-messages.json"));
@@ -65,7 +60,7 @@ namespace VWOFmeSdk.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Could not read log file {filePath}: {ex.Message}");
+                //Console.WriteLine($"Could not read log file {filePath}: {ex.Message}");
                 return new Dictionary<string, string>();
             }
         }

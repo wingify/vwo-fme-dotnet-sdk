@@ -43,5 +43,7 @@ namespace VWOFmeSdk.Constants
         public const string HTTPS_PROTOCOL = "https";
 
         public const int RANDOM_ALGO = 1;
+        
+        public const string VWO_META_MEG_KEY = "_vwo_meta_meg_";
     }
 }

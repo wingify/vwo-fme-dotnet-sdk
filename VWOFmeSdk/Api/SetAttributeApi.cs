@@ -26,7 +26,7 @@ namespace VWOFmeSdk.Api
 {
     public class SetAttributeAPI
     {
-        public static void SetAttribute(Settings settings, string attributeKey, string attributeValue, VWOContext context)
+        public static void SetAttribute(Settings settings, string attributeKey, object attributeValue, VWOContext context)
         {
             CreateAndSendImpressionForSetAttribute(settings, attributeKey, attributeValue, context);
         }
@@ -34,7 +34,7 @@ namespace VWOFmeSdk.Api
         private static void CreateAndSendImpressionForSetAttribute(
             Settings settings,
             string attributeKey,
-            string attributeValue,
+            object attributeValue,
             VWOContext context
         )
         {

@@ -59,8 +59,12 @@ namespace VWOFmeSdk.Services
             LoggerService.Log(LogLevelEnum.INFO, "USER_PART_OF_CAMPAIGN", new Dictionary<string, string>
             {
                 {"userId", userId},
-                {"campaignKey", campaign.RuleKey},
-                {"notPart", isUserPart ? "" : "not"}
+                {"notPart", isUserPart ? "" : "not"},
+                { "campaignKey", 
+                    campaign.Type == CampaignTypeEnum.AB.GetValue() 
+                    ? campaign.Key 
+                    : campaign.Name + "_" + campaign.RuleKey 
+                },
             });
 
             return isUserPart;
@@ -118,7 +122,11 @@ namespace VWOFmeSdk.Services
             LoggerService.Log(LogLevelEnum.DEBUG, "USER_BUCKET_TO_VARIATION", new Dictionary<string, string>
             {
                 {"userId", userId},
-                {"campaignKey", campaign.RuleKey},
+                { "campaignKey", 
+                    campaign.Type == CampaignTypeEnum.AB.GetValue()
+                    ? campaign.Key 
+                    : campaign.Name + "_" + campaign.RuleKey 
+                },
                 {"percentTraffic", percentTraffic.ToString()},
                 {"bucketValue", bucketValue.ToString()},
                 {"hashValue", hashValue.ToString()}
@@ -155,7 +163,11 @@ namespace VWOFmeSdk.Services
                 LoggerService.Log(LogLevelEnum.INFO, "SEGMENTATION_SKIP", new Dictionary<string, string>
                 {
                     {"userId", context.Id},
-                    {"campaignKey", campaign.RuleKey}
+                    { "campaignKey", 
+                        campaign.Type == CampaignTypeEnum.AB.GetValue() 
+                        ? campaign.Key 
+                        : campaign.Name + "_" + campaign.RuleKey 
+                    }
                 });
                 return true;
             }
@@ -165,7 +177,11 @@ namespace VWOFmeSdk.Services
                 LoggerService.Log(LogLevelEnum.INFO, "SEGMENTATION_STATUS", new Dictionary<string, string>
                 {
                     {"userId", context.Id},
-                    {"campaignKey", campaign.RuleKey},
+                    { "campaignKey", 
+                        campaign.Type == CampaignTypeEnum.AB.GetValue() 
+                        ? campaign.Key 
+                        : campaign.Name + "_" + campaign.RuleKey 
+                    },
                     {"status", preSegmentationResult ? "passed" : "failed"}
                 });
                 return preSegmentationResult;

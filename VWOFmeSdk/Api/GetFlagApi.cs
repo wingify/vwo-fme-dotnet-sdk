@@ -141,7 +141,7 @@ namespace VWOFmeSdk.Api
                 List<Campaign> rolloutRulesToEvaluate = new List<Campaign>();
                 foreach (var rule in rollOutRules)
                 {
-                    Dictionary<string, object> evaluateRuleResult = RuleEvaluationUtil.EvaluateRule(settings, feature, rule, context, evaluatedFeatureMap, new Dictionary<int, int>(), storageService, decision);
+                    Dictionary<string, object> evaluateRuleResult = RuleEvaluationUtil.EvaluateRule(settings, feature, rule, context, evaluatedFeatureMap, new Dictionary<int, string>(), storageService, decision);
                     bool preSegmentationResult = (bool)evaluateRuleResult["preSegmentationResult"];
                     if (preSegmentationResult)
                     {
@@ -183,7 +183,7 @@ namespace VWOFmeSdk.Api
             {
                 List<Campaign> experimentRulesToEvaluate = new List<Campaign>();
                 List<Campaign> experimentRules = GetAllExperimentRules(feature);
-                Dictionary<int, int> megGroupWinnerCampaigns = new Dictionary<int, int>();
+                Dictionary<int, string> megGroupWinnerCampaigns = new Dictionary<int, string>();
 
                 foreach (var rule in experimentRules)
                 {

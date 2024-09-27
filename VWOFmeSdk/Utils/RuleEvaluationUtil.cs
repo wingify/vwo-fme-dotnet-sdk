@@ -48,7 +48,7 @@ namespace VWOFmeSdk.Utils
             Campaign campaign,
             VWOContext context,
             Dictionary<string, object> evaluatedFeatureMap,
-            Dictionary<int, int> megGroupWinnerCampaigns,
+            Dictionary<int, string> megGroupWinnerCampaigns,
             StorageService storageService,
             Dictionary<string, object> decision)
         {
