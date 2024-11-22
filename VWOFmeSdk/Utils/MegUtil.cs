@@ -392,7 +392,7 @@ namespace VWOFmeSdk.Utils
                     new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
                     {
                         { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
-                        { "user", context.Id },
+                        { "userId", context.Id },
                         { "experimentId", winnerCampaign.Id },
                         { "experimentKey", winnerCampaign.Key },
                         { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }
@@ -514,7 +514,7 @@ namespace VWOFmeSdk.Utils
                         new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
                         {
                             { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
-                            { "user", context.Id },
+                            { "userId", context.Id },
                             { "experimentId", winnerCampaign.Id },
                             { "experimentKey", winnerCampaign.Key },
                             { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }

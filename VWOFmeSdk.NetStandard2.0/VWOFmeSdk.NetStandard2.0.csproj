@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -165,22 +165,16 @@
     <Folder Include="Utils\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="..\VWOFmeSdk\Packages\Logger\Messages\debug-messages.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="..\VWOFmeSdk\Packages\Logger\Messages\info-messages.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="..\VWOFmeSdk\Packages\Logger\Messages\error-messages.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="..\VWOFmeSdk\Packages\Logger\Messages\warn-messages.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="..\VWOFmeSdk\Packages\Logger\Messages\trace-messages.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+<ItemGroup>
+    <EmbeddedResource Include="../VWOFmeSdk/Packages/Logger/Messages/debug-messages.json">
+        <LogicalName>VWOFmeSdk.Packages.Logger.Messages.debug-messages.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../VWOFmeSdk/Packages/Logger/Messages/info-messages.json">
+        <LogicalName>VWOFmeSdk.Packages.Logger.Messages.info-messages.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../VWOFmeSdk/Packages/Logger/Messages/error-messages.json">
+        <LogicalName>VWOFmeSdk.Packages.Logger.Messages.error-messages.json</LogicalName>
+    </EmbeddedResource>
+</ItemGroup>
 
 </Project>

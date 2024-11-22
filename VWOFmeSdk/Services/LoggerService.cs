@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Newtonsoft.Json;
 using VWOFmeSdk.Packages.Logger.Core;
 using VWOFmeSdk.Packages.Logger.Enums;
@@ -36,31 +37,42 @@ namespace VWOFmeSdk.Services
 
         public LoggerService(Dictionary<string, object> config)
         {
-            // Initialize the LogManager
+            // Initialize LogManager
             LogManager.GetInstance(config);
 
-            // Read the log files from the specific directory
-            string messagesDirectory = Path.Combine(AppContext.BaseDirectory, "Packages", "Logger", "Messages");
-
-            DebugMessages = ReadLogFiles(Path.Combine(messagesDirectory, "debug-messages.json"));
-            InfoMessages = ReadLogFiles(Path.Combine(messagesDirectory, "info-messages.json"));
-            ErrorMessages = ReadLogFiles(Path.Combine(messagesDirectory, "error-messages.json"));
+            // Load messages from embedded resources
+            DebugMessages = LoadEmbeddedResource("debug-messages.json");
+            InfoMessages = LoadEmbeddedResource("info-messages.json");
+            ErrorMessages = LoadEmbeddedResource("error-messages.json");
         }
 
-
         /**
-         * Reads the log files and returns the messages in a map.
+         * Loads the specified embedded JSON file and returns its contents as a dictionary.
+         * Replaces the old ReadLogFiles method.
          */
-        private Dictionary<string, string> ReadLogFiles(string filePath)
+        private Dictionary<string, string> LoadEmbeddedResource(string resourceFileName)
         {
+            var assembly = Assembly.GetExecutingAssembly();    
+            string resourcePath = $"VWOFmeSdk.Packages.Logger.Messages.{resourceFileName}";
+
             try
             {
-                var fileContent = File.ReadAllText(filePath);
-                return JsonConvert.DeserializeObject<Dictionary<string, string>>(fileContent);
+                using (Stream stream = assembly.GetManifestResourceStream(resourcePath))
+                {
+                    if (stream == null)
+                    {
+                        return new Dictionary<string, string>();
+                    }
+
+                    using (StreamReader reader = new StreamReader(stream))
+                    {
+                        string fileContent = reader.ReadToEnd();
+                        return JsonConvert.DeserializeObject<Dictionary<string, string>>(fileContent);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Could not read log file {filePath}: {ex.Message}");
                 return new Dictionary<string, string>();
             }
         }
@@ -117,6 +129,5 @@ namespace VWOFmeSdk.Services
                     break;
             }
         }
-
     }
 }

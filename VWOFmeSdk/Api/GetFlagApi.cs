@@ -229,7 +229,7 @@ namespace VWOFmeSdk.Api
                 Dictionary<string, object> storageMap = new Dictionary<string, object>
                 {
                     { "featureKey", feature.Key },
-                    { "user", context.Id }
+                    { "userId", context.Id }
                 };
                 foreach (var item in passedRulesInformation)
                 {

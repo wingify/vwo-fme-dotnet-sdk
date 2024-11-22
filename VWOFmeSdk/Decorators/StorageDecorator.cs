@@ -51,7 +51,7 @@ namespace VWOFmeSdk.Decorators
         public Variation SetDataInStorage(Dictionary<string, object> data, StorageService storageService)
         {
             string featureKey = data["featureKey"] as string;
-            string userId = data["user"].ToString();
+            string userId = data["userId"].ToString();
 
             if (string.IsNullOrEmpty(featureKey))
             {
