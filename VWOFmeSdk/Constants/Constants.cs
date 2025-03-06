@@ -38,6 +38,7 @@ namespace VWOFmeSdk.Constants
 
         public const string HOST_NAME = "dev.visualwebsiteoptimizer.com";
         public const string SETTINGS_ENDPOINT = "/server-side/v2-settings";
+        public const string WEBHOOK_SETTINGS_ENDPOINT = "/server-side/v2-pull";
 
         public const string VWO_FS_ENVIRONMENT = "vwo_fs_environment";
         public const string HTTPS_PROTOCOL = "https";

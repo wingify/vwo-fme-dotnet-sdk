@@ -132,7 +132,7 @@ namespace VWOFmeSdk.Services
          * Fetches settings from the server
          * @return settings
          */
-        private string FetchSettings()
+        public string FetchSettings(bool isViaWebhook = false)
         {
             if (sdkKey == null || accountId == null)
             {
@@ -148,9 +148,13 @@ namespace VWOFmeSdk.Services
                 options.Add("s", "prod");
             }
 
+            string path = isViaWebhook 
+                ? ConstantsNamespace.Constants.WEBHOOK_SETTINGS_ENDPOINT 
+                : ConstantsNamespace.Constants.SETTINGS_ENDPOINT;
+
             try
             {
-                RequestModel request = new RequestModel(hostname, "GET", ConstantsNamespace.Constants.SETTINGS_ENDPOINT, options, null, null, this.protocol, port);
+                RequestModel request = new RequestModel(hostname, "GET", path, options, null, null, this.protocol, port);
                 request.SetTimeout(networkTimeout);
 
                 ResponseModel response = networkInstance.Get(request);

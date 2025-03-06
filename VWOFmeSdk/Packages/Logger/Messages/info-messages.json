@@ -1,6 +1,7 @@
 {
   "ON_INIT_ALREADY_RESOLVED": "[INFO]: VWO-SDK {date} {apiName} already resolved",
   "ON_INIT_SETTINGS_FAILED": "[INFO]: VWO-SDK {date} VWO settings could not be fetched",
+  "SETTINGS_UPDATED_SUCCESSFULLY" : "Settings File Updated Successfully",
 
   "POLLING_SET_SETTINGS": "There's a change in settings from the last settings fetched. Hence, instantiating a new VWO client internally",
   "POLLING_NO_CHANGE_IN_SETTINGS": "No change in settings with the last settings fetched. Hence, not instantiating new VWO client",

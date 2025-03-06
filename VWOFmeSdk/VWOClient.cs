@@ -32,6 +32,7 @@ namespace VWOFmeSdk
 {
     public class VWOClient
     {
+        private static VWOClient vwoClientInstance;
         private Settings processedSettings;
         public string Settings { get; private set; }
         private VWOInitOptions options;
@@ -39,8 +40,6 @@ namespace VWOFmeSdk
         {
             MissingMemberHandling = MissingMemberHandling.Ignore
         };
-
-        public static ObjectMapper ObjectMapper { get; } = new ObjectMapper();
 
         /// <summary>
         /// Constructor to initialize the VWOClient
@@ -64,6 +63,8 @@ namespace VWOFmeSdk
                 UrlService.Init(this.processedSettings.CollectionPrefix);
                 // Init SDKMetaUtil and set SDK version
                 LoggerService.Log(LogLevelEnum.INFO, "CLIENT_INITIALIZED", null);
+
+                vwoClientInstance = this;
             }
             catch (Exception exception)
             {
@@ -82,11 +83,57 @@ namespace VWOFmeSdk
             {
                 this.processedSettings = JsonConvert.DeserializeObject<Settings>(newSettings, JsonSerializerSettings);
                 SettingsUtil.ProcessSettings(this.processedSettings);
+                LoggerService.Log(LogLevelEnum.INFO, "SETTINGS_UPDATED_SUCCESSFULLY", null);
             }
             catch (Exception exception)
             {
                 LoggerService.Log(LogLevelEnum.ERROR, "Exception occurred while updating settings: " + exception.Message);
             }
+        }
+
+        /// <summary>
+        /// This method is used to update the settings by fetching from server (overloaded method with no parameters).
+        /// </summary>
+        /// <returns>Updated settings in JSON string format</returns>
+        public string UpdateSettings()
+        {
+            return UpdateSettings(true); 
+        }
+
+        /// <summary>
+        /// This method is used to update the settings.
+        /// </summary>
+        /// <param name="isViaWebhook">Boolean value to indicate if the settings are being fetched via webhook</param>
+        /// <returns>Updated settings in JSON string format</returns>
+        public string UpdateSettings(bool isViaWebhook)
+        {
+            string apiName = "updateSettings";
+            try
+            {
+                // Fetch the new settings from the server based on the webhook flag
+                this.Settings = SettingsManager.GetInstance().FetchSettings(isViaWebhook);
+                UpdateSettings(this.Settings);  // Call the method that takes a settings string
+                return this.Settings;
+            }
+            catch (Exception exception)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_FAILED", new Dictionary<string, string>
+                {
+                    { "apiName", apiName },
+                    { "isViaWebhook", isViaWebhook.ToString() },
+                    { "err", exception.ToString() }
+                });
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Static method to get the VWOClient instance
+        /// </summary>
+        /// <returns>VWOClient instance</returns>
+        public static VWOClient GetInstance()
+        {
+            return vwoClientInstance;
         }
 
         /// <summary>
@@ -205,8 +252,7 @@ namespace VWOFmeSdk
         }
 
         /// <summary>
-        /// Overloaded function for no event properties
-        /// calls track method to track the event
+        /// Overloaded function when no event properties are required
         /// </summary>
         /// <param name="eventName">Event name to be tracked</param>
         /// <param name="context">User context</param>
@@ -214,74 +260,6 @@ namespace VWOFmeSdk
         public Dictionary<string, bool> TrackEvent(string eventName, VWOContext context)
         {
             return Track(eventName, context, new Dictionary<string, object>());
-        }
-
-        /// <summary>
-        /// Sets an attribute for a user in the context provided.
-        /// This method validates the types of the inputs before proceeding with the API call.
-        /// </summary>
-        /// <param name="attributeKey">The key of the attribute to set</param>
-        /// <param name="attributeValue">The value of the attribute to set</param>
-        /// <param name="context">User context</param>
-        public void SetAttribute(string attributeKey, string attributeValue, VWOContext context)
-        {
-            string apiName = "setAttribute";
-            try
-            {
-                LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", apiName } });
-                if (!DataTypeUtil.IsString(attributeKey))
-                {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                    {
-                        { "apiName", apiName },
-                        { "key", "attributeKey" },
-                        { "type", DataTypeUtil.GetType(attributeKey) },
-                        { "correctType", "String" }
-                    });
-                    throw new ArgumentException("TypeError: attributeKey should be a string");
-                }
-
-                if (!DataTypeUtil.IsString(attributeValue))
-                {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                    {
-                        { "apiName", apiName },
-                        { "key", "attributeValue" },
-                        { "type", DataTypeUtil.GetType(attributeValue) },
-                        { "correctType", "String" }
-                    });
-                    throw new ArgumentException("TypeError: attributeValue should be a string");
-                }
-
-                if (context == null || string.IsNullOrEmpty(context.Id))
-                {
-                    throw new ArgumentException("User ID is required");
-                }
-
-                if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
-                {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
-                    return;
-                }
-
-                SetAttributeAPI.SetAttribute(this.processedSettings, attributeKey, attributeValue, context);
-            }
-            catch (Exception exception)
-            {
-                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "err", exception.ToString() }
-                });
-            }
-        }
-    }
-
-    public class ObjectMapper
-    {
-        public Dictionary<string, object> ConvertValue<T>(T value)
-        {
-            return JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(value));
         }
     }
 }
