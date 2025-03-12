@@ -39,6 +39,7 @@ namespace VWOFmeSdk.Models
         private int endRangeVariation = 0;
         private List<Variable> variables;
         private double weight;
+        private string salt;
 
         public int Id
         {
@@ -136,6 +137,12 @@ namespace VWOFmeSdk.Models
             set { endRangeVariation = value; }
         }
 
+        public string Salt
+        {
+            get { return salt; }
+            set { salt = value; }
+        }
+
         public void SetModelFromDictionary(Campaign model)
         {
             if (model.Id != 0)
@@ -185,6 +192,10 @@ namespace VWOFmeSdk.Models
 
             if (model.EndRangeVariation != 0)
                 endRangeVariation = model.EndRangeVariation;
+            
+            if(model.Salt != null) {
+                salt = model.Salt;
+            }
         }
     }
 }

@@ -26,6 +26,7 @@ using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Packages.DecisionMaker;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Core;
+using Newtonsoft.Json;
 
 namespace VWOFmeSdk.Services
 {
@@ -38,22 +39,24 @@ namespace VWOFmeSdk.Services
         /// <param name="campaign"></param>
         public bool IsUserPartOfCampaign(string userId, Campaign campaign)
         {
-            if (campaign == null || userId == null)
+            if (campaign == null || string.IsNullOrEmpty(userId))
             {
                 return false;
             }
 
-            double trafficAllocation;
-            if (campaign.Type == CampaignTypeEnum.ROLLOUT.GetValue() || campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue())
-            {
-                trafficAllocation = campaign.Variations[0].Weight;
-            }
-            else
-            {
-                trafficAllocation = campaign.PercentTraffic;
-            }
+            // Determine if the campaign is of type ROLLOUT or PERSONALIZE
+            bool isRolloutOrPersonalize = campaign.Type == CampaignTypeEnum.ROLLOUT.GetValue() || campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue();
 
-            int valueAssignedToUser = new DecisionMaker().GetBucketValueForUser(campaign.Id + "_" + userId);
+            // Get the salt based on the campaign type
+            string salt = isRolloutOrPersonalize ? campaign.Variations[0].Salt : campaign.Salt;
+
+            // Get the traffic allocation based on the campaign type
+            double trafficAllocation = isRolloutOrPersonalize ? campaign.Variations[0].Weight : campaign.PercentTraffic;
+
+            // Build the bucket key
+            string bucketKey = !string.IsNullOrEmpty(salt) ? $"{salt}_{userId}" : $"{campaign.Id}_{userId}";
+
+            int valueAssignedToUser = new DecisionMaker().GetBucketValueForUser(bucketKey);
             bool isUserPart = valueAssignedToUser != 0 && valueAssignedToUser <= trafficAllocation;
 
             LoggerService.Log(LogLevelEnum.INFO, "USER_PART_OF_CAMPAIGN", new Dictionary<string, string>
@@ -109,14 +112,22 @@ namespace VWOFmeSdk.Services
         /// <param name="campaign"></param>
         public Variation BucketUserToVariation(string userId, string accountId, Campaign campaign)
         {
-            if (campaign == null || userId == null)
+            if (campaign == null || string.IsNullOrEmpty(userId))
             {
                 return null;
             }
 
             int multiplier = campaign.PercentTraffic != 0 ? 1 : 0;
             int percentTraffic = campaign.PercentTraffic;
-            long hashValue = new DecisionMaker().GenerateHashValue(campaign.Id + "_" + accountId + "_" + userId);
+
+            // Get salt
+            string salt = campaign.Salt;
+
+            // Get bucket key
+            string bucketKey = !string.IsNullOrEmpty(salt) ? $"{salt}_{accountId}_{userId}" : $"{campaign.Id}_{accountId}_{userId}";
+
+            // Generate hash value
+            long hashValue = new DecisionMaker().GenerateHashValue(bucketKey);
             int bucketValue = new DecisionMaker().GenerateBucketValue(hashValue, ConstantsNamespace.Constants.MAX_TRAFFIC_VALUE, multiplier);
 
             LoggerService.Log(LogLevelEnum.DEBUG, "USER_BUCKET_TO_VARIATION", new Dictionary<string, string>

@@ -34,6 +34,7 @@ namespace VWOFmeSdk.Models
         private Dictionary<string, object> segments = new Dictionary<string, object>();
         private string ruleKey;
         private string type;
+        private string salt;
 
         public int Id
         {
@@ -95,10 +96,16 @@ namespace VWOFmeSdk.Models
             set { ruleKey = value; }
         }
 
-         public string Type
+        public string Type
         {
             get { return type; }
             set { type = value; }
+        }
+
+        public string Salt
+        {
+            get { return salt; }
+            set { salt = value; }
         }
     }
 }

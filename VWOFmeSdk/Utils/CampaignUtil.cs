@@ -116,7 +116,24 @@ namespace VWOFmeSdk.Utils
         /// <returns>The bucketing seed.</returns>
         public static string GetBucketingSeed(string userId, Campaign campaign, int? groupId)
         {
-            return groupId.HasValue ? $"{groupId}_{userId}" : $"{campaign.Id}_{userId}";
+            //return groupId.HasValue ? $"{groupId}_{userId}" : $"{campaign.Id}_{userId}";
+            if(groupId.HasValue) {
+                return $"{groupId}_{userId}";
+            }
+
+              // Determine if the campaign is of type ROLLOUT or PERSONALIZE
+            bool isRolloutOrPersonalize = campaign.Type == CampaignTypeEnum.ROLLOUT.GetValue() || campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue();
+
+            // Get the salt based on the campaign type
+            string salt = isRolloutOrPersonalize ? campaign.Variations[0].Salt : campaign.Salt;
+
+            if (!string.IsNullOrEmpty(salt))
+            {
+                return $"{salt}_{userId}";
+            } else {
+                return $"{campaign.Id}_{userId}";
+            }
+
         }
 
         /// <summary>
