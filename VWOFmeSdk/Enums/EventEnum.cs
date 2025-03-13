@@ -23,7 +23,8 @@ namespace VWOFmeSdk.Enums
     public enum EventEnum
     {
         VWO_VARIATION_SHOWN,
-        VWO_SYNC_VISITOR_PROP
+        VWO_SYNC_VISITOR_PROP,
+        VWO_ERROR
     }
 
     public static class EventEnumExtensions
@@ -36,6 +37,8 @@ namespace VWOFmeSdk.Enums
                     return "vwo_variationShown";
                 case EventEnum.VWO_SYNC_VISITOR_PROP:
                     return "vwo_syncVisitorProp";
+                case EventEnum.VWO_ERROR:
+                    return "vwo_log";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(eventEnum), eventEnum, null);
             }

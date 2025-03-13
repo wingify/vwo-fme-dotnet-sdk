@@ -32,6 +32,9 @@ using VWOFmeSdk.Services;
 using Newtonsoft.Json;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Packages.NetworkLayer.Manager;
+using VWOFmeSdk.Services;
+using VWOFmeSdk.Utils;
+using Newtonsoft.Json;
 
 namespace VWOFmeSdk.Utils
 {
@@ -51,12 +54,13 @@ namespace VWOFmeSdk.Utils
         /// <param name="visitorUserAgent"></param>
         /// <param name="ipAddress"></param>
         /// <returns></returns>
-        public static Dictionary<string, string> GetEventsBaseProperties(Settings setting, string eventName, string visitorUserAgent, string ipAddress)
+        public static Dictionary<string, string> GetEventsBaseProperties(string eventName, string visitorUserAgent = "", string ipAddress = "")
         {
+            string sdkKey = SettingsManager.GetInstance().SdkKey;
             var requestQueryParams = new RequestQueryParams(
                 eventName,
-                setting.AccountId.ToString(),
-                setting.SdkKey,
+                SettingsManager.GetInstance().AccountId.ToString(),
+                sdkKey,
                 visitorUserAgent,
                 ipAddress,
                 GenerateEventUrl()
@@ -75,7 +79,7 @@ namespace VWOFmeSdk.Utils
         /// <returns></returns>
         public static EventArchPayload GetEventBasePayload(Settings settings, string userId, string eventName, string visitorUserAgent, string ipAddress)
         {
-            string uuid = UUIDUtils.GetUUID(userId, settings.AccountId.ToString());
+            string uuid = UUIDUtils.GetUUID(userId, SettingsManager.GetInstance().AccountId.ToString());
             var eventArchData = new EventArchData
             {
                 MsgId = GenerateMsgId(uuid),
@@ -143,7 +147,7 @@ namespace VWOFmeSdk.Utils
             {
                 VwoSdkName = ConstantsNamespace.Constants.SDK_NAME,
                 VwoSdkVersion = SDKMetaUtil.GetSdkVersion(),
-                VwoEnvKey = settings.SdkKey
+                VwoEnvKey = SettingsManager.GetInstance().SdkKey
             };
         }
 
@@ -158,7 +162,7 @@ namespace VWOFmeSdk.Utils
             {
                 Props = new Dictionary<string, object>
                 {
-                    { ConstantsNamespace.Constants.VWO_FS_ENVIRONMENT, settings.SdkKey }
+                    { ConstantsNamespace.Constants.VWO_FS_ENVIRONMENT, SettingsManager.GetInstance().SdkKey }
                 }
             };
         }
@@ -344,6 +348,65 @@ namespace VWOFmeSdk.Utils
             if (!string.IsNullOrEmpty(userAgent)) headers[HeadersEnum.USER_AGENT.GetHeader()] = userAgent;
             if (!string.IsNullOrEmpty(ipAddress)) headers[HeadersEnum.IP.GetHeader()] = ipAddress;
             return headers;
+        }
+
+        public static Dictionary<string, object> GetMessagingEventPayload(string messageType, string message, string eventName)
+        {
+            var userId = $"{SettingsManager.GetInstance().AccountId}_{SettingsManager.GetInstance().SdkKey}";
+            var properties = GetEventBasePayload(null, userId, eventName, null, null);
+
+            properties.D.Event.Props.VwoEnvKey = SettingsManager.GetInstance().SdkKey;
+            properties.D.Event.Props.Product = "fme"; // Assuming 'product' is a required field
+
+            // Set the message data
+            var data = new
+            {
+                type = messageType,
+                content = new
+                {
+                    title = message,
+                    dateTime = FunctionUtil.GetCurrentUnixTimestampInMillis()
+                }
+            };
+
+            properties.D.Event.Props.Data = data; // Assign data to "data" property
+
+            return ConvertEventArchPayloadToDictionary(properties);
+        }
+
+        public static object SendMessagingEvent(Dictionary<string, string> properties, Dictionary<string, object> payload)
+        {
+            NetworkManager.GetInstance().AttachClient();
+
+            try
+            {
+                // Prepare the request model
+                var request = new RequestModel(
+                    ConstantsNamespace.Constants.HOST_NAME,
+                    "POST",
+                    UrlEnum.EVENTS.GetUrl(),
+                    properties,
+                    payload,
+                    null,
+                    ConstantsNamespace.Constants.HTTPS_PROTOCOL,
+                    443
+                );            
+
+                NetworkManager.GetInstance().PostAsync(request);
+                // Assuming the POST request was successful, return a success indicator
+                return new { success = true, message = "Event sent successfully" };
+            }
+            catch (Exception ex)
+            {
+                // Log error and return false as fallback
+                LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                {
+                    { "method", "POST" },
+                    { "err", ex.ToString() }
+                });
+
+                return false;
+            }
         }
     }
 }

@@ -94,7 +94,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
             }
             catch (Exception error)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating get request, error: {error}");
+                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating get request, error");
                 return null;
             }
         }
@@ -120,7 +120,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
             }
             catch (Exception error)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating post request, error: {error}");
+                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating post request");
                 return null;
             }
         }

@@ -32,7 +32,11 @@ namespace VWOFmeSdk.Utils
         {
             try
             {
-                sdkVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                // Fetch the version as a System.Version object
+                var version = Assembly.GetExecutingAssembly().GetName().Version;
+
+                // Format the version string to include only Major, Minor, and Build components
+                sdkVersion = $"{version.Major}.{version.Minor}.{version.Build}";
             }
             catch (Exception e)
             {

@@ -25,6 +25,9 @@ using VWOFmeSdk.Packages.NetworkLayer.Manager;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Core;
 using VWOFmeSdk.Packages.Storage;
+using Newtonsoft.Json;
+using VWOFmeSdk.Models;
+using VWOFmeSdk.Models.Schemas;
 
 namespace VWOFmeSdk
 {
@@ -36,9 +39,10 @@ namespace VWOFmeSdk
         private VWOClient vwoClient;
         private readonly VWOInitOptions options;
         private SettingsManager settingsManager;
-        private string settings;
+        private Settings settings;
         private string originalSettings;
         private bool isSettingsFetchInProgress;
+        public bool settingsSetManually = false;
 
         public VWOBuilder(VWOInitOptions options)
         {
@@ -90,6 +94,52 @@ namespace VWOFmeSdk
             });
             return this;
         }
+
+         /// <summary>
+        /// Sets the settings manually for the SDK.
+        /// </summary>
+        /// <param name="settings">Settings as a JSON string.</param>
+        public void SetSettings(string settings)
+        {
+            LoggerService.Log(LogLevelEnum.DEBUG, "API - SetSettings called");
+
+            try
+            {
+                // Store the original settings as a string
+                originalSettings = settings;
+
+                // Deserialize the JSON string into a Settings object
+                var settingsObject = JsonConvert.DeserializeObject<Settings>(settings);
+
+                // // Validate the settings
+                if (settingsObject == null || !new SettingsSchema().IsSettingsValid(settingsObject))
+                {
+                    throw new InvalidOperationException("Provided settings are invalid or do not match the schema.");
+                }
+
+                // Process the settings using SettingsUtil
+                SettingsUtil.ProcessSettings(settingsObject);
+
+                // Assign the processed settings back to this.settings as a Settings object
+                this.settings = settingsObject;
+
+                // Mark settings as manually set
+                settingsSetManually = true;
+
+                LoggerService.Log(LogLevelEnum.INFO, "Settings have been manually set");
+            }
+            catch (Exception ex)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "Error occurred while setting settings manually: " + ex.Message);
+                throw;
+            }
+        }
+
+        public string GetOriginalSettings()
+        {
+            return originalSettings;
+        }
+
 
         /// <summary>
         /// Fetches settings asynchronously, ensuring no parallel fetches.
@@ -146,7 +196,7 @@ namespace VWOFmeSdk
         {
             if (options != null && options.Storage != null)
             {
-                Storage.Instance.AttachConnector(options.Storage);
+                VWOFmeSdk.Packages.Storage.Storage.Instance.AttachConnector(options.Storage);
             }
             return this;
         }

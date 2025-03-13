@@ -24,6 +24,7 @@ using VWOFmeSdk.Models;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Models.User;
+using Newtonsoft.Json;
 
 namespace VWOFmeSdk.Api
 {
@@ -58,7 +59,7 @@ namespace VWOFmeSdk.Api
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error in tracking event: {eventName} Error: {e.Message}");
+                LoggerService.Log(LogLevelEnum.ERROR, $"Error in tracking event: {eventName}");
                 return false;
             }
         }
@@ -71,7 +72,6 @@ namespace VWOFmeSdk.Api
         )
         {
             Dictionary<string, string> properties = NetworkUtil.GetEventsBaseProperties(
-                settings,
                 eventName,
                 ImpressionUtil.EncodeURIComponent(context.UserAgent),
                 context.IpAddress

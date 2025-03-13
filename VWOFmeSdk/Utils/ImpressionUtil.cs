@@ -35,7 +35,7 @@ namespace VWOFmeSdk.Utils
         /// <param name="context"></param>
         public static void CreateAndSendImpressionForVariationShown(Settings settings, int campaignId, int variationId, VWOContext context)
         {
-            var properties = NetworkUtil.GetEventsBaseProperties(settings, EventEnum.VWO_VARIATION_SHOWN.GetValue(), EncodeURIComponent(context.UserAgent), context.IpAddress);
+            var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VWO_VARIATION_SHOWN.GetValue(), EncodeURIComponent(context.UserAgent), context.IpAddress);
 
             var payload = NetworkUtil.GetTrackUserPayloadData(settings, context.Id, EventEnum.VWO_VARIATION_SHOWN.GetValue(), campaignId, variationId, context.UserAgent, context.IpAddress);
 

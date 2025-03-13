@@ -54,6 +54,17 @@ namespace VWOFmeSdk.Services
             get { return port; }
         }
 
+        public string SdkKey
+        {
+            get { return sdkKey; }
+        }
+
+        public int? AccountId
+        {
+            get { return accountId; }
+        }
+
+
         /// <summary>
         /// Get the instance of SettingsManager
         /// </summary>

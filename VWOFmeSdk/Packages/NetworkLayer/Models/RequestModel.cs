@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Models
 {
@@ -132,7 +133,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
 
         public Dictionary<string, object> GetOptions()
         {
-            var queryParams = new System.Text.StringBuilder();
+            var queryParams = new StringBuilder();
             foreach (var key in query.Keys)
             {
                 queryParams.Append(key).Append('=').Append(query[key]).Append('&');
@@ -152,6 +153,11 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
                 options["port"] = port;
             }
 
+            if (headers == null)
+            {
+                headers = new Dictionary<string, string>();
+            }
+            
             if (headers != null)
             {
                 options["headers"] = headers;

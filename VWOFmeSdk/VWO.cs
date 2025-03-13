@@ -63,7 +63,21 @@ namespace VWOFmeSdk
                 .SetSegmentation()
                 .InitPolling();
 
-            string settings = vwoBuilder.GetSettings(false);
+            string settings;
+            if (!string.IsNullOrEmpty(options.Settings))
+            {
+                settings = options.Settings;
+                vwoBuilder.SetSettings(settings);
+            } 
+            else if (vwoBuilder.settingsSetManually)
+            {
+                settings = vwoBuilder.GetOriginalSettings();
+            }
+            else
+            {
+                settings = vwoBuilder.GetSettings(false);
+            }
+            // Create the VWO instance
             VWO vwoInstance = new VWO(settings, options);
 
             // Set VWOClient instance in VWOBuilder

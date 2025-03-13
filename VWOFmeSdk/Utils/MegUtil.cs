@@ -93,9 +93,17 @@ namespace VWOFmeSdk.Utils
                 }
             }
 
+            // Get eligible campaigns
             var eligibleCampaignsMap = GetEligibleCampaigns(settings, campaignMap, context, storageService);
-            var eligibleCampaigns = (List<Campaign>)eligibleCampaignsMap["eligibleCampaigns"];
-            var eligibleCampaignsWithStorage = (List<Campaign>)eligibleCampaignsMap["eligibleCampaignsWithStorage"];
+            
+            var eligibleCampaigns = eligibleCampaignsMap.ContainsKey("eligibleCampaigns") ? (List<Campaign>)eligibleCampaignsMap["eligibleCampaigns"] : new List<Campaign>();
+            var eligibleCampaignsWithStorage = eligibleCampaignsMap.ContainsKey("eligibleCampaignsWithStorage") ? (List<Campaign>)eligibleCampaignsMap["eligibleCampaignsWithStorage"] : new List<Campaign>();
+            // Check if eligible campaigns exist before proceeding
+            if (eligibleCampaigns == null || eligibleCampaigns.Count == 0)
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG, "No eligible campaigns found for feature key: " + feature.Key);
+                return null;
+            }
 
             return FindWinnerCampaignAmongEligibleCampaigns(settings, feature.Key, eligibleCampaigns, eligibleCampaignsWithStorage, groupId, context, storageService);
         }

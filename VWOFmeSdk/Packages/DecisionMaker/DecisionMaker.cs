@@ -86,15 +86,14 @@ namespace VWOFmeSdk.Packages.DecisionMaker
             int multiplier = 1;
             int maxValue = MAX_TRAFFIC_VALUE;
             long hashValue = GenerateHashValue(str); // Generate the hash value for the string
-
             return GenerateBucketValue(hashValue, maxValue, multiplier); // Generate and return the bucket value
         }
 
         public long GenerateHashValue(string hashKey)
         {
-            var murmur128 = MurmurHash.Create128(SEED_VALUE);
-            byte[] hashBytes = murmur128.ComputeHash(System.Text.Encoding.UTF8.GetBytes(hashKey));
-            long hashValue = BitConverter.ToUInt32(hashBytes, 0); // Convert the first 4 bytes to an unsigned long value
+            var murmur32 = MurmurHash.Create32(SEED_VALUE);
+            byte[] hashBytes = murmur32.ComputeHash(System.Text.Encoding.UTF8.GetBytes(hashKey));
+            long hashValue = BitConverter.ToUInt32(hashBytes, 0);
             return hashValue;
         }
     }

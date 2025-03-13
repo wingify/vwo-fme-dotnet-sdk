@@ -92,15 +92,6 @@ namespace VWOFmeSdk
         }
 
         /// <summary>
-        /// This method is used to update the settings by fetching from server (overloaded method with no parameters).
-        /// </summary>
-        /// <returns>Updated settings in JSON string format</returns>
-        public string UpdateSettings()
-        {
-            return UpdateSettings(true); 
-        }
-
-        /// <summary>
         /// This method is used to update the settings.
         /// </summary>
         /// <param name="isViaWebhook">Boolean value to indicate if the settings are being fetched via webhook</param>
@@ -260,6 +251,75 @@ namespace VWOFmeSdk
         public Dictionary<string, bool> TrackEvent(string eventName, VWOContext context)
         {
             return Track(eventName, context, new Dictionary<string, object>());
+        }
+
+        /// <summary>
+        /// Sets an attribute for a user in the context provided.
+        /// This method validates the types of the inputs before proceeding with the API call.
+        /// </summary>
+        /// <param name="attributeKey">The key of the attribute to set</param>
+        /// <param name="attributeValue">The value of the attribute to set</param>
+        /// <param name="context">User context</param>
+        public void SetAttribute(string attributeKey, string attributeValue, VWOContext context = null)
+        {
+            string apiName = "setAttribute";
+            try
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", apiName } });
+                if (!DataTypeUtil.IsString(attributeKey))
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
+                    {
+                        { "apiName", apiName },
+                        { "key", "attributeKey" },
+                        { "type", DataTypeUtil.GetType(attributeKey) },
+                        { "correctType", "String" }
+                    });
+                    throw new ArgumentException("TypeError: attributeKey should be a string");
+                }
+
+                if (!DataTypeUtil.IsString(attributeValue))
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
+                    {
+                        { "apiName", apiName },
+                        { "key", "attributeValue" },
+                        { "type", DataTypeUtil.GetType(attributeValue) },
+                        { "correctType", "String" }
+                    });
+                    throw new ArgumentException("TypeError: attributeValue should be a string");
+                }
+
+                if (context == null || string.IsNullOrEmpty(context.Id))
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "API_CONTEXT_INVALID", new Dictionary<string, string> {});
+                    throw new ArgumentException("Invalid Context");
+                }
+
+                if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    return;
+                }
+
+                SetAttributeAPI.SetAttribute(this.processedSettings, attributeKey, attributeValue, context);
+            }
+            catch (Exception exception)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
+                {
+                    { "apiName", apiName },
+                    { "err", exception.ToString() }
+                });
+            }
+        }
+    }
+
+    public class ObjectMapper
+    {
+        public Dictionary<string, object> ConvertValue<T>(T value)
+        {
+            return JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(value));
         }
     }
 }

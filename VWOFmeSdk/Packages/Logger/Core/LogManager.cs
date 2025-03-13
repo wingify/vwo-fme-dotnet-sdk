@@ -22,6 +22,9 @@ using System.Linq;
 using VWOFmeSdk.Interfaces.Logger;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.Logger.Transports;
+using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Enums;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Packages.Logger.Core
 {
@@ -36,6 +39,7 @@ namespace VWOFmeSdk.Packages.Logger.Core
         private string prefix;
         private string dateTimeFormat;
         private List<Dictionary<string, object>> transports = new List<Dictionary<string, object>>();
+        private static HashSet<string> storedMessages = new HashSet<string>();  // To prevent duplicate errors
 
         /// <summary>
         ///  Private constructor to enforce singleton pattern
@@ -166,7 +170,6 @@ namespace VWOFmeSdk.Packages.Logger.Core
 
         public Dictionary<string, object> GetTransport()
         {
-            // Implementing a method that returns a single transport if needed
             return transports.FirstOrDefault();
         }
 
@@ -195,9 +198,31 @@ namespace VWOFmeSdk.Packages.Logger.Core
             transportManager.Warn(message);
         }
 
+        /// <summary>
+        /// Override the Error method to handle additional actions.
+        /// Logs the error message, sends it to the network, and prevents duplicate errors.
+        /// </summary>
+        /// <param name="message"></param>
         public override void Error(string message)
         {
             transportManager.Error(message);
+
+            // Check if the message has already been logged
+            string messageToSend = $"{message}-{ConstantsNamespace.Constants.SDK_NAME}-{SDKMetaUtil.GetSdkVersion()}";
+
+            if (!storedMessages.Contains(messageToSend))
+            {
+                // Add the message to the stored set to prevent duplicates
+                storedMessages.Add(messageToSend);
+
+                var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VWO_ERROR.GetValue());
+
+                // create the payload
+                var payload = NetworkUtil.GetMessagingEventPayload("error", message, EventEnum.VWO_ERROR.GetValue());
+
+                // Send the error event via HTTP request asynchronously
+                NetworkUtil.SendMessagingEvent(properties, payload);
+            }
         }
     }
 }

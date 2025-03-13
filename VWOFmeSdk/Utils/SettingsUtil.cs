@@ -72,14 +72,23 @@ namespace VWOFmeSdk.Utils
                         return null;
 
                     originalCampaign.RuleKey = rule.RuleKey;
+                    // Create a new campaign instance and initialize it
                     var campaign = new Campaign();
                     campaign.SetModelFromDictionary(originalCampaign);
 
+                    // Preserve the original variations
+                    var originalVariations = new List<Variation>(originalCampaign.Variations);
                     if (rule.VariationId != null && rule.VariationId != 0)
                     {
-                        campaign.Variations = campaign.Variations.Where(v => v.Id == rule.VariationId).ToList();
-                    }
+                        // Filter variations based on the rule's VariationId
+                        var filteredVariations = originalVariations.Where(v => v.Id == rule.VariationId).ToList();
 
+                        // Only update variations if a match is found
+                        if (filteredVariations.Any())
+                        {
+                            campaign.Variations = filteredVariations;
+                        }
+                    }
                     return campaign;
                 }).Where(campaign => campaign != null).ToList();
 
@@ -97,37 +106,49 @@ namespace VWOFmeSdk.Utils
 
             foreach (var feature in settings.Features)
             {
+                if (feature.RulesLinkedCampaign == null) 
+                    continue;
+
                 foreach (var rule in feature.RulesLinkedCampaign)
                 {
-                    var segments = (rule.Type == CampaignTypeEnum.ROLLOUT.GetValue() || rule.Type == CampaignTypeEnum.PERSONALIZE.GetValue()) ? rule.Variations[0].Segments : rule.Segments;
-                    if (segments != null)
-                    {
-                        var jsonSegments = JsonConvert.SerializeObject(segments);
-                        var matches = pattern.Matches(jsonSegments);
-                        var foundMatch = false;
 
-                        foreach (Match match in matches)
+                    if (rule.Variations == null || rule.Variations.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var segments = (rule.Type == CampaignTypeEnum.ROLLOUT.GetValue() || rule.Type == CampaignTypeEnum.PERSONALIZE.GetValue())
+                        ? rule.Variations[0].Segments
+                        : rule.Segments;
+
+                    if (segments == null)
+                        continue;
+
+                    var jsonSegments = JsonConvert.SerializeObject(segments);
+                    var matches = pattern.Matches(jsonSegments);
+                    var foundMatch = false;
+
+                    foreach (Match match in matches)
+                    {
+                        if (Regex.IsMatch(match.Value, @"\b(country|region|city|os|device_type|browser_string|ua)\b"))
                         {
-                            if (Regex.IsMatch(match.Value, @"\b(country|region|city|os|device_type|browser_string|ua)\b"))
-                            {
-                                if (!IsWithinCustomVariable(match.Index, jsonSegments))
-                                {
-                                    foundMatch = true;
-                                    break;
-                                }
-                            }
-                            else
+                            if (!IsWithinCustomVariable(match.Index, jsonSegments))
                             {
                                 foundMatch = true;
                                 break;
                             }
                         }
-
-                        if (foundMatch)
+                        else
                         {
-                            feature.IsGatewayServiceRequired = true;
+                            foundMatch = true;
                             break;
                         }
+                    }
+
+                    if (foundMatch)
+                    {
+                        feature.IsGatewayServiceRequired = true;
+                        break;
                     }
                 }
             }

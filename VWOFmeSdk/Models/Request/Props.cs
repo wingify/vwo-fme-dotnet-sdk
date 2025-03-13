@@ -29,7 +29,7 @@ namespace VWOFmeSdk.Models.Request
         [JsonProperty("vwo_sdkVersion")]
         public string VwoSdkVersion { get; set; }
 
-        [JsonProperty("vwo_envKey")]
+        [JsonProperty("vwo_fs_environment")]
         public string VwoEnvKey { get; set; }
 
         [JsonProperty("variation")]
@@ -37,12 +37,17 @@ namespace VWOFmeSdk.Models.Request
 
         [JsonProperty("id")]
         public int Id { get; set; }
-
         [JsonProperty("isFirst")]
         public int IsFirst { get; set; }
 
         [JsonProperty("isCustomEvent")]
         public bool IsCustomEvent { get; set; }
+
+        [JsonProperty("product")]
+        public string Product { get; set; } // Added explicitly for "product"
+
+        [JsonProperty("data")]
+        public object Data { get; set; } // Added explicitly for "data"
 
         [JsonExtensionData]
         public Dictionary<string, object> AdditionalProperties { get; set; } = new Dictionary<string, object>();

@@ -39,7 +39,6 @@ namespace VWOFmeSdk.Api
         )
         {
             Dictionary<string, string> properties = NetworkUtil.GetEventsBaseProperties(
-                settings,
                 EventEnum.VWO_SYNC_VISITOR_PROP.GetValue(),
                 ImpressionUtil.EncodeURIComponent(context.UserAgent),
                 context.IpAddress

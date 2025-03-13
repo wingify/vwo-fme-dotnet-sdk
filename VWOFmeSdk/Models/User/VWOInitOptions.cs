@@ -36,6 +36,8 @@ namespace VWOFmeSdk.Models.User
         private VWOBuilder vwoBuilder;
         private Dictionary<string, object> gatewayService = new Dictionary<string, object>();
 
+        private string settings;
+
         public string SdkKey
         {
             get { return sdkKey; }
@@ -94,6 +96,12 @@ namespace VWOFmeSdk.Models.User
         {
             get { return vwoBuilder; }
             set { vwoBuilder = value; }
+        }
+
+        public string Settings
+        {
+            get { return settings; }
+            set { settings = value; }
         }
     }
 }
