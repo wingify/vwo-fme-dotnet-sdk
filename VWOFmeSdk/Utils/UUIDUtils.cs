@@ -17,12 +17,34 @@
 #pragma warning restore 1587
 
 using System;
-using System.Linq;
+using Identifiable;
 
 namespace VWOFmeSdk.Utils
 {
     public static class UUIDUtils
     {
+        private static readonly Guid UrlNamespace = new Guid("6ba7b811-9dad-11d1-80b4-00c04fd430c8"); // The namespace for URLs
+        private static readonly string VWO_NAMESPACE_URL = "https://vwo.com";
+
+        /// <summary>
+        /// This method generates a UUID for a given userId and accountId.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static string GetUUID(string userId, string accountId)
+        {
+            var accountIdAsString = accountId.ToString();
+
+            // Compute the UUID using NamedGuid.Compute from the Identifiable library
+            var vwoNamespaceGuid = NamedGuid.Compute(NamedGuidAlgorithm.SHA1, UrlNamespace, VWO_NAMESPACE_URL);
+            var accountIdGuid = NamedGuid.Compute(NamedGuidAlgorithm.SHA1, vwoNamespaceGuid, accountIdAsString);
+            var userIdGuid = NamedGuid.Compute(NamedGuidAlgorithm.SHA1, accountIdGuid, userId);
+
+            var uuid = userIdGuid.ToString("N").ToUpper(); // Format as a UUID string (no hyphens)
+            return uuid;
+        }
+
         /// <summary>
         /// This method generates a random UUID.
         /// </summary>
@@ -33,41 +55,6 @@ namespace VWOFmeSdk.Utils
             var namespaceUUID = new Guid("00000000-0000-0000-0000-000000000000");
             var randomUUID = Guid.NewGuid();
             return new Guid(namespaceUUID.ToByteArray()).ToString();
-        }
-
-        /// <summary>
-        /// This method generates a UUID for a given userId and accountId.
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <param name="accountId"></param>
-        /// <returns></returns>
-        public static string GetUUID(string userId, string accountId)
-        {
-            var vwoNamespace = Guid.Parse("00000000-0000-0000-0000-000000000000");
-            var userIdNamespace = GenerateUUID(accountId, vwoNamespace.ToString());
-            var uuidForUserIdAccountId = GenerateUUID(userId, userIdNamespace.ToString());
-            return uuidForUserIdAccountId.ToString().Replace("-", "").ToUpper();
-        }
-
-        /// <summary>
-        /// This method generates a UUID for a given name and namespaceId.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="namespaceId"></param>
-        /// <returns></returns>
-        private static Guid GenerateUUID(string name, string namespaceId)
-        {
-            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(namespaceId))
-            {
-                return default;
-            }
-
-            var namespaceBytes = new Guid(namespaceId).ToByteArray();
-            var nameBytes = System.Text.Encoding.UTF8.GetBytes(name);
-            var hash = System.Security.Cryptography.SHA1.Create().ComputeHash(namespaceBytes.Concat(nameBytes).ToArray());
-            hash[6] = (byte)(0x50 | (hash[6] & 0xf));
-            hash[8] = (byte)(0x80 | (hash[8] & 0x3f));
-            return new Guid(hash.Take(16).ToArray());
         }
     }
 }
