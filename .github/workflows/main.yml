@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, github-action, test]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    if: "!contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
+    name: Test on .NET ${{ matrix.dotnet-version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        dotnet-version: [ '2.1.x', '2.2.x', '3.1.x', '5.0.x', '6.0.x', '7.0.x', '8.0.x', '9.0.x' ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
