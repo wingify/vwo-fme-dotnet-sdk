@@ -21,6 +21,7 @@ using VWOFmeSdk.Interfaces.Integration;
 using VWOFmeSdk.Interfaces.Networking;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators;
 using VWOFmeSdk.Packages.Storage;
+using VWOFmeSdk.Models;
 namespace VWOFmeSdk.Models.User
 {
     public class VWOInitOptions
@@ -35,6 +36,7 @@ namespace VWOFmeSdk.Models.User
         private int? pollInterval;
         private VWOBuilder vwoBuilder;
         private Dictionary<string, object> gatewayService = new Dictionary<string, object>();
+        private BatchEventData batchEventData;
 
         private string settings;
 
@@ -102,6 +104,12 @@ namespace VWOFmeSdk.Models.User
         {
             get { return settings; }
             set { settings = value; }
+        }
+
+        public BatchEventData BatchEventData
+        {
+            get { return batchEventData; }
+            set { batchEventData = value; }
         }
     }
 }

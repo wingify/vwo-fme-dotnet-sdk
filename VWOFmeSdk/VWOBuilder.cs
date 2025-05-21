@@ -28,6 +28,9 @@ using VWOFmeSdk.Packages.Storage;
 using Newtonsoft.Json;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Models.Schemas;
+using VWOFmeSdk.Services;
+using VWOFmeSdk.Constants;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 
 namespace VWOFmeSdk
 {
@@ -43,6 +46,9 @@ namespace VWOFmeSdk
         private string originalSettings;
         private bool isSettingsFetchInProgress;
         public bool settingsSetManually = false;
+
+        public bool IsBatchingUsed { get; private set; }
+        private BatchEventQueue batchEventQueue;
 
         public VWOBuilder(VWOInitOptions options)
         {
@@ -276,6 +282,75 @@ namespace VWOFmeSdk
             }
 
             new System.Threading.Thread(CheckAndPoll).Start();
+
+            return this;
+        }
+
+        /// <summary>
+        /// Initializes batching based on options.
+        /// </summary>
+        /// <returns>The instance of this builder.</returns>
+        public VWOBuilder InitBatching()
+        {
+            // Check if gateway service is provided and skip SDK batching if so
+            if (SettingsManager.GetInstance().isGatewayServiceProvided)
+            {
+                LoggerService.Log(LogLevelEnum.INFO, "GATEWAY_SERVICE_CONFIGURED", null);
+                return this;
+            }
+
+            // Check if batch event data is provided in options
+            if (this.options?.BatchEventData != null)
+            {
+                int eventsPerRequest = this.options.BatchEventData.EventsPerRequest;
+                int requestTimeInterval = this.options.BatchEventData.RequestTimeInterval;
+
+                bool isEventsPerRequestValid = DataTypeUtil.IsInteger(eventsPerRequest) && 
+                    eventsPerRequest > 0 && 
+                    eventsPerRequest <= ConstantsNamespace.Constants.MAX_EVENTS_PER_REQUEST;
+                
+                bool isRequestTimeIntervalValid = DataTypeUtil.IsInteger(requestTimeInterval) && 
+                    requestTimeInterval > 0;
+
+                // Check data type and values for eventsPerRequest and requestTimeInterval
+                if (!isEventsPerRequestValid && !isRequestTimeIntervalValid)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "Values mismatch from the expectation of both parameters. Batching not initialized.");
+                    return this;
+                }
+
+                // Handle invalid data types for individual parameters
+                if (!isEventsPerRequestValid)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "Events_per_request values is invalid (should be greater than 0 and less than 5000). Using default value of events_per_request parameter : 100");
+                    eventsPerRequest = ConstantsNamespace.Constants.DEFAULT_EVENTS_PER_REQUEST; // Use default if invalid
+                }
+
+                if (!isRequestTimeIntervalValid)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "Request_time_interval values is invalid (should be greater than 0). Using default value of request_time_interval parameter : 600");
+                    requestTimeInterval = ConstantsNamespace.Constants.DEFAULT_REQUEST_TIME_INTERVAL; // Use default if invalid
+                }
+
+                // Initialize BatchEventQueue for batching
+                batchEventQueue = new BatchEventQueue(
+                    eventsPerRequest,
+                    requestTimeInterval,
+                    this.options.AccountId ?? 0,
+                    this.options.SdkKey,
+                    this.options.BatchEventData.FlushCallback
+                );
+
+                vwoClient.BatchEventQueue = batchEventQueue; // Link the BatchEventQueue to the vwoClient
+                IsBatchingUsed = true;
+
+                LoggerService.Log(LogLevelEnum.DEBUG,"Event Batching initialized successfully in SDK.");
+            }
+            else
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG,"Event Batching functionality not initialized. SDK batching is disabled.");
+                IsBatchingUsed = false;
+            }
 
             return this;
         }

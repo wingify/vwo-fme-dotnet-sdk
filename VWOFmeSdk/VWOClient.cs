@@ -40,6 +40,13 @@ namespace VWOFmeSdk
         {
             MissingMemberHandling = MissingMemberHandling.Ignore
         };
+        private BatchEventQueue batchEventQueue;
+        
+        public BatchEventQueue BatchEventQueue
+        {
+            get { return batchEventQueue; }
+            set { batchEventQueue = value; }
+        }
 
         /// <summary>
         /// Constructor to initialize the VWOClient
@@ -311,6 +318,38 @@ namespace VWOFmeSdk
                     { "apiName", apiName },
                     { "err", exception.ToString() }
                 });
+            }
+        }
+
+        /// <summary>
+        /// Flushes the events manually from the batch events queue
+        /// </summary>
+        /// <returns>True if flush was successful, false otherwise</returns>
+        public bool FlushEvents()
+        {
+            string apiName = "FlushEvents";
+            try
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", apiName } });
+                
+                if (this.batchEventQueue != null)
+                {
+                    return this.batchEventQueue.FlushAndClearTimer();
+                }
+                else
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, " 'Batching is not enabled. Pass batchEvents in the SDK configuration while invoking init API.'");
+                    return false;
+                }
+            }
+            catch (Exception exception)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
+                {
+                    { "apiName", apiName },
+                    { "err", exception.ToString() }
+                });
+                return false;
             }
         }
     }

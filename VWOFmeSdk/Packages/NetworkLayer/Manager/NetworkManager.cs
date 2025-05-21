@@ -24,6 +24,7 @@ using VWOFmeSdk.Packages.NetworkLayer.Handlers;
 using VWOFmeSdk.Packages.NetworkLayer.Models;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
+using VWOFmeSdk.Interfaces.Batching;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 {
@@ -104,8 +105,9 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         /// </summary>
         /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
         /// <returns></returns>
-        public ResponseModel Post(RequestModel request)
+        public ResponseModel Post(RequestModel request, IFlushInterface flushCallback = null)
         {
+            ResponseModel response = null;
             try
             {
                 var networkOptions = CreateRequest(request);
@@ -113,16 +115,36 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                 {
                     return null;
                 }
+
+                // Perform the actual POST request
+                response = client.POST(request);
+
+                // Handle the response and trigger callback based on success or failure
+                if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() < 300)
+                {
+                    if (flushCallback != null)
+                    {
+                        flushCallback.OnFlush(null, request.GetBody());  // Success, pass request body to callback
+                    }
+                }
                 else
                 {
-                    return client.POST(request);
+                    if (flushCallback != null)
+                    {
+                        flushCallback.OnFlush($"Failed with status code: {response?.GetStatusCode()}", null);  // Failure, pass error message
+                    }
                 }
             }
             catch (Exception error)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating post request");
+                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating post request, error: {error}");
+                if (flushCallback != null)
+                {
+                    flushCallback.OnFlush($"Error occurred while sending batch events: {error.Message}", null);
+                }
                 return null;
             }
+            return response;
         }
 
         /// <summary>
