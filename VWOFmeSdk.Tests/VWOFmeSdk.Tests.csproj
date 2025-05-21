@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+<PropertyGroup>
+    <TargetFrameworks>net6.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+</PropertyGroup>
+
+
+  <ItemGroup>
+    <!-- Include JSON resource files from the Resources folder -->
+    <EmbeddedResource Include="Resources\BASIC_ROLLOUT_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\BASIC_ROLLOUT_TESTING_RULE_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\MEG_CAMPAIGN_ADVANCE_ALGO_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\MEG_CAMPAIGN_RANDOM_ALGO_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\NO_ROLLOUT_ONLY_TESTING_RULE_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\ROLLOUT_TESTING_PRE_SEGMENT_RULE_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\TESTING_WHITELISTING_SEGMENT_RULE_SETTINGS.json" />
+</ItemGroup>
+
+
+  <ItemGroup>
+    <!-- Add test expectations -->
+    <None Update="Expectations\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Add test expectations -->
+    <None Update="Resources\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Add necessary NuGet packages -->
+    <PackageReference Include="coverlet.collector" Version="3.1.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Moq" Version="4.18.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Text.Json" Version="8.0.3" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference the main SDK project -->
+    <ProjectReference Include="..\VWOFmeSdk.NetStandard2.0\VWOFmeSdk.NetStandard2.0.csproj" />
+  </ItemGroup>
+
+</Project>

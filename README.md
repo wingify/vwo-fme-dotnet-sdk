@@ -11,8 +11,13 @@ The **VWO Feature Management and Experimentation SDK** (VWO FME Dotnet SDK) enab
 
 ## Requirements
 
-- .NET Standard 2.0 and higher
-- Compatible with .NET Core, .NET Framework, and .NET 5+
+- **.NET Standard 2.0** or higher
+- Compatible with the following **.NET** implementations:
+  - **.NET Core 3.1+** (LTS, supported)
+  - **.NET Framework 4.6.1+**
+  - **.NET 5+** (End-of-life, not recommended for new projects)
+  - **.NET 6+** (LTS, recommended for new projects)
+  - **.NET 7+** (latest stable version)
 
 ---
 
