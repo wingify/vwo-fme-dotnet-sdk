@@ -186,6 +186,11 @@ namespace VWOFmeSdk.Utils
             properties.D.Event.Props.Id = campaignId;
             properties.D.Event.Props.Variation = variationId.ToString(CultureInfo.InvariantCulture);
             properties.D.Event.Props.IsFirst = 1;
+            
+            if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
+            {
+                properties.D.Event.Props.VwoMeta = UsageStatsUtil.GetInstance().GetUsageStats();
+            }
 
             LoggerService.Log(LogLevelEnum.DEBUG, "IMPRESSION_FOR_TRACK_USER", new Dictionary<string, string>
             {

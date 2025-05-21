@@ -37,6 +37,8 @@ namespace VWOFmeSdk.Models.User
         private VWOBuilder vwoBuilder;
         private Dictionary<string, object> gatewayService = new Dictionary<string, object>();
         private BatchEventData batchEventData;
+        private bool isUsageStatsDisabled;
+        private Dictionary<string, object> vwoMetaData = new Dictionary<string, object>();
 
         private string settings;
 
@@ -110,6 +112,18 @@ namespace VWOFmeSdk.Models.User
         {
             get { return batchEventData; }
             set { batchEventData = value; }
+        }
+        
+        public bool IsUsageStatsDisabled
+        {
+            get { return isUsageStatsDisabled; }
+            set { isUsageStatsDisabled = value; }
+        }
+
+        public Dictionary<string, object> VwoMetaData
+        {
+            get { return vwoMetaData; }
+            set { vwoMetaData = value; }
         }
     }
 }

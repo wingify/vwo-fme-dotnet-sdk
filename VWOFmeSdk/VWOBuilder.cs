@@ -31,6 +31,7 @@ using VWOFmeSdk.Models.Schemas;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Constants;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk
 {
@@ -354,6 +355,23 @@ namespace VWOFmeSdk
 
             return this;
         }
+
+        /// <summary>
+        /// Initializes the usage stats for the VWO instance.
+        /// </summary>
+        /// <returns>The instance of this builder.</returns>
+        public VWOBuilder InitUsageStats()
+        {
+            // if usageStatsDisabled is not null and is true, then return
+            if (this.options.IsUsageStatsDisabled)
+            {
+                return this;
+            }
+            
+            UsageStatsUtil.GetInstance().SetUsageStats(this.options);
+            
+            return this;
+        } 
 
         /// <summary>
         /// Checks and polls for settings updates at the provided interval.
