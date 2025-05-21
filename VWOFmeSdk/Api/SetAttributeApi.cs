@@ -52,7 +52,19 @@ namespace VWOFmeSdk.Api
                 attributeValue
             );
 
-            NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress);
+            var vwoInstance = VWO.GetInstance();
+
+            // Check if batch events are enabled
+            if (vwoInstance.BatchEventQueue != null)
+            {
+                // Enqueue the event to the batch queue if batching is enabled
+                vwoInstance.BatchEventQueue.Enqueue(payload);
+            }
+            else
+            {
+                // Otherwise, send the event immediately using SendPostApiRequest
+                NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress);
+            }
         }
     }
 }

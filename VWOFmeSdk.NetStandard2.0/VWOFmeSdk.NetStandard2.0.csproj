@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -15,6 +15,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,6 +41,7 @@
     <Compile Include="..\VWOFmeSdk\Interfaces\Logger\LogTransport.cs" Link="Interfaces\Logger\LogTransport.cs" />
     <Compile Include="..\VWOFmeSdk\Interfaces\Storage\IStorageDecorator.cs" Link="Interfaces\Storage\IStorageDecorator.cs" />
     <Compile Include="..\VWOFmeSdk\Interfaces\Integration\IntegrationCallback.cs" Link="Interfaces\Integration\IntegrationCallback.cs" />
+    <Compile Include="..\VWOFmeSdk\Interfaces\Batching\IFlushInterface.cs" Link="Interfaces\Batching\IFlushInterface.cs" />
 
     <!-- Logger -->
     <Compile Include="..\VWOFmeSdk\Packages\Logger\Enums\LogLevelEnum.cs" Link="Packages\Logger\Enums\LogLevelEnum.cs" />
@@ -74,6 +76,7 @@
     <Compile Include="..\VWOFmeSdk\Models\Request\EventArchPayload.cs" Link="Models\Request\EventArchPayload.cs" />
     <Compile Include="..\VWOFmeSdk\Models\Request\Props.cs" Link="Models\Request\Props.cs" />
     <Compile Include="..\VWOFmeSdk\Models\Schemas\SettingsSchema.cs" Link="Models\Schemas\SettingsSchema.cs" />
+    <Compile Include="..\VWOFmeSdk\Models\BatchEventData.cs" Link="Models\BatchEventData.cs" />
 
     <!-- Packages -->
     <Compile Include="..\VWOFmeSdk\Packages\DecisionMaker\DecisionMaker.cs" Link="Packages\DecisionMaker\DecisionMaker.cs" />
@@ -100,6 +103,7 @@
     <Compile Include="..\VWOFmeSdk\Services\SettingsManager.cs" Link="Services\SettingsManager.cs" />
     <Compile Include="..\VWOFmeSdk\Services\StorageService.cs" Link="Services\StorageService.cs" />
     <Compile Include="..\VWOFmeSdk\Services\UrlService.cs" Link="Services\UrlService.cs" />
+    <Compile Include="..\VWOFmeSdk\Services\BatchEventQueue.cs" Link="Services\BatchEventQueue.cs" />
 
     <!-- Utils -->
     <Compile Include="..\VWOFmeSdk\Utils\CampaignUtil.cs" Link="Utils\CampaignUtil.cs" />

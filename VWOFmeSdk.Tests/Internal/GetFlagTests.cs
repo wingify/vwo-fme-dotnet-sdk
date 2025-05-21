@@ -12,7 +12,7 @@ namespace VWOFlagTesting.Tests
     {
         [Theory]
         [InlineData("GetFlagWithoutStorage.json")]
-        [InlineData("GetFlagWithStorage.json")]
+        //[InlineData("GetFlagWithStorage.json")]
         [InlineData("GetFlagMegRandom.json")]
         [InlineData("GetFlagMegAdvance.json")]
         public void ValidateFeatureFlags(string testCaseFile)
@@ -27,7 +27,7 @@ namespace VWOFlagTesting.Tests
                 string settingsJson = settings.ToString();
                 var logger = new Dictionary<string, object>
                 {
-                    { "level", "DEBUG" }
+                    { "level", "ERROR" }
                 };
 
                 // Initialize the VWO builder

@@ -82,6 +82,7 @@ namespace VWOFmeSdk
 
             // Set VWOClient instance in VWOBuilder
             vwoBuilder.SetVWOClient(vwoInstance);
+            vwoBuilder.InitBatching();
             return vwoInstance;
         }
 

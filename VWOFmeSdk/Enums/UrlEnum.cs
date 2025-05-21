@@ -24,7 +24,8 @@ namespace VWOFmeSdk.Enums
     {
         EVENTS,
         ATTRIBUTE_CHECK,
-        GET_USER_DATA
+        GET_USER_DATA,
+        BATCH_EVENTS
     }
 
     public static class UrlEnumExtensions
@@ -39,6 +40,8 @@ namespace VWOFmeSdk.Enums
                     return "/check-attribute";
                 case UrlEnum.GET_USER_DATA:
                     return "/get-user-details";
+                case UrlEnum.BATCH_EVENTS:
+                    return "/server-side/batch-events-v2";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(urlEnum), urlEnum, null);
             }
