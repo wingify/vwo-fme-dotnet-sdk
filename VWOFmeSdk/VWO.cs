@@ -61,7 +61,8 @@ namespace VWOFmeSdk
                 .SetStorage()
                 .SetNetworkManager()
                 .SetSegmentation()
-                .InitPolling();
+                .InitPolling()
+                .InitUsageStats();
 
             string settings;
             if (!string.IsNullOrEmpty(options.Settings))

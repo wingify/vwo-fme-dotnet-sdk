@@ -25,6 +25,7 @@ using VWOFmeSdk.Packages.NetworkLayer.Models;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Interfaces.Batching;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 {
@@ -153,7 +154,17 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
         public void PostAsync(RequestModel request)
         {
-            executorService.StartNew(() => Post(request));
+            executorService.StartNew(() => 
+            {
+                var response = Post(request);
+                if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() <= 299)
+                {
+                    if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
+                    {
+                        UsageStatsUtil.GetInstance().ClearUsageStats();
+                    }
+                }
+            });
         }
     }
 }

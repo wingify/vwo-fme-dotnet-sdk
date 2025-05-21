@@ -20,10 +20,10 @@ namespace VWOFmeSdk.Packages.Logger.Enums
 {
     public enum LogLevelNumberEnum
     {
-        Trace = 0,
-        Debug = 1,
-        Info = 2,
-        Warn = 3,
-        Error = 4
+        TRACE = 0,
+        DEBUG = 1,
+        INFO = 2,
+        WARN = 3,
+        ERROR = 4
     }
 }

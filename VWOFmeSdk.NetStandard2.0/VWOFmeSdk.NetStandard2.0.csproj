@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.8.0</Version>
+    <Version>1.8.1</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -119,6 +119,7 @@
     <Compile Include="..\VWOFmeSdk\Utils\SDKMetaUtil.cs" Link="Utils\SDKMetaUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\SettingsUtil.cs" Link="Utils\SettingsUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\UUIDUtils.cs" Link="Utils\UUIDUtils.cs" />
+    <Compile Include="..\VWOFmeSdk\Utils\UsageStatsUtil.cs" Link="Utils\UsageStatsUtil.cs" />
 
     <!-- Main Classes -->
     <Compile Include="..\VWOFmeSdk\VWO.cs" Link="VWO.cs" />
