@@ -16,6 +16,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>APACHE-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/wingify/vwo-fme-dotnet-sdk/</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://developers.vwo.com/v2/docs/fme-dotnet</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
