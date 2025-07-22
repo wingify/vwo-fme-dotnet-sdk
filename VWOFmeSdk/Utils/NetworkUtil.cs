@@ -379,7 +379,11 @@ namespace VWOFmeSdk.Utils
         /// <returns></returns>
         private static Dictionary<string, object> ConvertEventArchPayloadToDictionary(EventArchPayload payload)
         {
-            return JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(payload));
+            var json = JsonConvert.SerializeObject(payload, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+            return JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
         }
 
         private static string GenerateRandom()

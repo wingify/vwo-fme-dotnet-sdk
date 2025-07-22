@@ -49,8 +49,8 @@ namespace VWOFmeSdk.Models.Request
         [JsonProperty("data")]
         public object Data { get; set; } // Added explicitly for "data"
 
-        [JsonProperty("vwoMeta")]
-        public Dictionary<string, object> VwoMeta { get; set; }
+        [JsonProperty("vwoMeta", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, object> VwoMeta { get; set; } = new Dictionary<string, object>();
 
         [JsonExtensionData]
         public Dictionary<string, object> AdditionalProperties { get; set; } = new Dictionary<string, object>();

@@ -382,6 +382,7 @@ namespace VWOFmeSdk
 
             while (true)
             {
+                System.Threading.Thread.Sleep(pollingInterval);
                 try
                 {
                     string latestSettings = GetSettings(true);
@@ -411,8 +412,6 @@ namespace VWOFmeSdk
                         { "err", ex.ToString() }
                     });
                 }
-
-                System.Threading.Thread.Sleep(pollingInterval);
             }
         }
 
