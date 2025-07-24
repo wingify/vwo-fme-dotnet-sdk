@@ -153,14 +153,16 @@ namespace VWOFmeSdk.Services
             NetworkManager networkInstance = NetworkManager.GetInstance();
             Dictionary<string, string> options = NetworkUtil.GetSettingsPath(sdkKey, accountId.Value);
             options.Add("api-version", "3");
+            options.Add("sn", ConstantsNamespace.Constants.SDK_NAME);
+            options.Add("sv", ConstantsNamespace.Constants.SDK_VERSION);
 
             if (!networkInstance.GetConfig().GetDevelopmentMode())
             {
                 options.Add("s", "prod");
             }
 
-            string path = isViaWebhook 
-                ? ConstantsNamespace.Constants.WEBHOOK_SETTINGS_ENDPOINT 
+            string path = isViaWebhook
+                ? ConstantsNamespace.Constants.WEBHOOK_SETTINGS_ENDPOINT
                 : ConstantsNamespace.Constants.SETTINGS_ENDPOINT;
 
             try

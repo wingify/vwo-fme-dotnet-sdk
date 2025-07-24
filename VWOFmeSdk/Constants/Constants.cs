@@ -33,6 +33,7 @@ namespace VWOFmeSdk.Constants
         public const int DEFAULT_REQUEST_TIME_INTERVAL = 600; // 10 * 60 (secs) = 600 secs i.e. 10 minutes
         public const int DEFAULT_EVENTS_PER_REQUEST = 100;
         public const string SDK_NAME = "vwo-fme-dotnet-sdk";
+        public const string SDK_VERSION = "1.8.3";
         public const int SETTINGS_EXPIRY = 10000000; // Changed from long to int
         public const int SETTINGS_TIMEOUT = 50000; // Changed from long to int
 
@@ -44,7 +45,7 @@ namespace VWOFmeSdk.Constants
         public const string HTTPS_PROTOCOL = "https";
 
         public const int RANDOM_ALGO = 1;
-        
+
         public const string VWO_META_MEG_KEY = "_vwo_meta_meg_";
     }
 }
