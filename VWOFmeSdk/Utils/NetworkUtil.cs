@@ -346,6 +346,37 @@ namespace VWOFmeSdk.Utils
             }
         }
 
+        /// <summary>
+        /// Generates a payload for the SDK init called event
+        /// </summary>
+        /// <param name="eventName"></param>
+        /// <param name="settingsFetchTime"></param>
+        /// <param name="sdkInitTime"></param>
+        /// <returns></returns>
+        public static Dictionary<string, object> GetSdkInitEventPayload(string eventName, int? settingsFetchTime = null, int? sdkInitTime = null)
+        {
+            // Get user ID and properties
+            var userId = SettingsManager.GetInstance().AccountId.ToString() + "_" + SettingsManager.GetInstance().SdkKey;
+            var properties = GetEventBasePayload(null, userId, eventName, null, null);
+
+            // Set the required fields as specified
+            
+            properties.D.Event.Props.VwoEnvKey = SettingsManager.GetInstance().SdkKey;
+            properties.D.Event.Props.Product = ConstantsNamespace.Constants.FME;
+
+            // Create the data object
+            var data = new Dictionary<string, object>
+            {
+                { "isSDKInitialized", true },
+                { "settingsFetchTime", settingsFetchTime },
+                { "sdkInitTime", sdkInitTime }
+            };
+
+            properties.D.Event.Props.Data = data;
+
+            return ConvertEventArchPayloadToDictionary(properties);
+        }
+
 
         /// <summary>
         /// Removes all the null values from the dictionary
@@ -438,22 +469,39 @@ namespace VWOFmeSdk.Utils
             return ConvertEventArchPayloadToDictionary(properties);
         }
 
-        public static object SendMessagingEvent(Dictionary<string, string> properties, Dictionary<string, object> payload)
+        /// <summary>
+        /// Sends an event to the VWO server
+        /// </summary>
+        /// <param name="properties"></param>
+        /// <param name="payload"></param>
+        /// <param name="eventName"></param>
+        /// <returns></returns>
+        public static object SendEvent(Dictionary<string, string> properties, Dictionary<string, object> payload, string eventName)
         {
             NetworkManager.GetInstance().AttachClient();
+            var baseUrl = UrlService.GetBaseUrl();
+            var port = SettingsManager.GetInstance().Port;
+            var protocol = SettingsManager.GetInstance().Protocol;
+
+            if(eventName == EventEnum.VWO_ERROR.GetValue())
+            {
+                baseUrl = ConstantsNamespace.Constants.HOST_NAME;
+                protocol = ConstantsNamespace.Constants.HTTPS_PROTOCOL;
+                port = 443;
+            }
 
             try
             {
                 // Prepare the request model
                 var request = new RequestModel(
-                    ConstantsNamespace.Constants.HOST_NAME,
+                    baseUrl,
                     "POST",
                     UrlEnum.EVENTS.GetUrl(),
                     properties,
                     payload,
                     null,
-                    ConstantsNamespace.Constants.HTTPS_PROTOCOL,
-                    443
+                    protocol,
+                    port
                 );            
 
                 NetworkManager.GetInstance().PostAsync(request);

@@ -43,6 +43,18 @@ namespace VWOFmeSdk.Services
         public string protocol = "https";
         public bool isGatewayServiceProvided = false;
         private static SettingsManager instance;
+        private int settingsFetchTime;
+        private bool isSettingsValid = false;
+
+        public bool IsSettingsValid
+        {
+            get { return isSettingsValid; }
+        }
+
+        public int SettingsFetchTime
+        {
+            get { return settingsFetchTime; }
+        }
 
         public string Protocol
         {
@@ -168,12 +180,19 @@ namespace VWOFmeSdk.Services
                 RequestModel request = new RequestModel(hostname, "GET", path, options, null, null, this.protocol, port);
                 request.SetTimeout(networkTimeout);
 
+                // start timer for settings fetch
+                var settingsFetchStartTime = DateTime.UtcNow;
                 ResponseModel response = networkInstance.Get(request);
                 if (response.GetStatusCode() != 200)
                 {
                     LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_ERROR", new Dictionary<string, string> { { "err", response.GetError().ToString() } });
                     return null;
                 }
+
+                // stop timer for settings fetch               
+                var settingsFetchTime = (int)(DateTime.UtcNow - settingsFetchStartTime).TotalMilliseconds;
+
+                this.settingsFetchTime = settingsFetchTime;
 
                 return response.GetData();
             }
@@ -209,6 +228,8 @@ namespace VWOFmeSdk.Services
                     bool settingsValid = new SettingsSchema().IsSettingsValid(JsonConvert.DeserializeObject<Settings>(settings));
                     if (settingsValid)
                     {
+                        LoggerService.Log(LogLevelEnum.INFO, "SETTINGS_FETCH_SUCCESS", null);
+                        this.isSettingsValid = true;
                         return settings;
                     }
                     else

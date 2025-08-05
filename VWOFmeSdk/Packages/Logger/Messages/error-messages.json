@@ -26,5 +26,6 @@
 
   "NETWORK_CALL_FAILED": "Error occurred while sending {method} request.",
 
-  "USER_ID_NULL_OR_EMPTY": "User ID passed cannot be null or empty"
+  "USER_ID_NULL_OR_EMPTY": "User ID passed cannot be null or empty",
+  "SDK_INIT_EVENT_FAILED": "Error occurred while sending SDK init event. Error:{err}"
 }

@@ -221,7 +221,7 @@ namespace VWOFmeSdk.Packages.Logger.Core
                 var payload = NetworkUtil.GetMessagingEventPayload("error", message, EventEnum.VWO_ERROR.GetValue());
 
                 // Send the error event via HTTP request asynchronously
-                NetworkUtil.SendMessagingEvent(properties, payload);
+                NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_ERROR.GetValue());
             }
         }
     }

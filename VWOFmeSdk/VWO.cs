@@ -22,6 +22,8 @@ using System.Collections.Generic;
 using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Packages.Logger.Enums;
+using VWOFmeSdk.Services;
+
 
 namespace VWOFmeSdk
 {
@@ -98,6 +100,9 @@ namespace VWOFmeSdk
 
         public static VWO Init(VWOInitOptions options)
         {
+            // Start timer for total init time
+            var initStartTime = DateTime.UtcNow;
+            
             if (options == null || string.IsNullOrEmpty(options.SdkKey))
             {
                 string message = LogMessageUtil.BuildMessage("SDK key is required to initialize VWO. Please provide the sdkKey in the options.", null);
@@ -113,6 +118,42 @@ namespace VWOFmeSdk
             }
 
             instance = SetInstance(options);
+
+            // Stop timer for total init time
+            var initEndTime = DateTime.UtcNow;
+            var sdkInitTime = (int)(initEndTime - initStartTime).TotalMilliseconds;
+
+
+            // wasInitialized is used to check if the SDK was initialized earlier
+            bool wasInitialized = false;
+            var originalSettingsString = vwoBuilder.GetOriginalSettings();
+            if (!string.IsNullOrEmpty(originalSettingsString))
+            {
+                // originalSettings is a string, so we need to parse it to a dictionary 
+                var originalSettings = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
+                // Check if sdkMetaInfo exists and contains wasInitializedEarlier
+                if (originalSettings.ContainsKey("sdkMetaInfo") && originalSettings["sdkMetaInfo"] != null)
+                {
+                    var sdkMetaInfo = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettings["sdkMetaInfo"].ToString());
+                    // Check if wasInitializedEarlier exists in sdkMetaInfo
+                    wasInitialized = sdkMetaInfo.ContainsKey("wasInitializedEarlier") ? (bool)sdkMetaInfo["wasInitializedEarlier"] : false;
+                }
+                else
+                {
+                    wasInitialized = false;
+                }
+            }
+            else
+            {
+                wasInitialized = false;
+            }
+
+            var settingsManager = vwoBuilder.GetSettingsManager();
+            if(!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
+            {
+                EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
+            }
+
             return instance;
         }
     }

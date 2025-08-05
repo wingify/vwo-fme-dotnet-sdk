@@ -46,5 +46,6 @@ namespace VWOFmeSdk.Constants
         public const int RANDOM_ALGO = 1;
         
         public const string VWO_META_MEG_KEY = "_vwo_meta_meg_";
+        public const string FME = "fme";
     }
 }

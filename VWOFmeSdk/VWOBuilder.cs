@@ -56,6 +56,15 @@ namespace VWOFmeSdk
             this.options = options;
         }
 
+        /// <summary>
+        /// Gets the settings manager.
+        /// </summary>
+        /// <returns>The settings manager.</returns>
+        public SettingsManager GetSettingsManager()
+        {
+            return settingsManager;
+        }
+
         // Set VWOClient instance
         public void SetVWOClient(VWOClient vwoClient)
         {
