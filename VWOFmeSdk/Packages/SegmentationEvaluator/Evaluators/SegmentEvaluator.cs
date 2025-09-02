@@ -60,6 +60,12 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
                     return new SegmentOperandEvaluator().EvaluateCustomVariableDSL(subDsl, properties); 
                 case SegmentOperatorValueEnum.UA:
                     return new SegmentOperandEvaluator().EvaluateUserAgentDSL(subDsl.ToString(), context);
+                case SegmentOperatorValueEnum.IP:
+                    return new SegmentOperandEvaluator().EvaluateStringOperandDSL(subDsl, context, SegmentOperatorValueEnum.IP);
+                case SegmentOperatorValueEnum.BROWSER_VERSION:
+                    return new SegmentOperandEvaluator().EvaluateStringOperandDSL(subDsl, context, SegmentOperatorValueEnum.BROWSER_VERSION);
+                case SegmentOperatorValueEnum.OS_VERSION:
+                    return new SegmentOperandEvaluator().EvaluateStringOperandDSL(subDsl, context, SegmentOperatorValueEnum.OS_VERSION);
                 default:
                     return false;
             }

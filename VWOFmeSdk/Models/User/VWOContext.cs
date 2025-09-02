@@ -27,7 +27,9 @@ namespace VWOFmeSdk.Models.User
         private string ipAddress = "";
         private Dictionary<string, object> customVariables = new Dictionary<string, object>();
         private Dictionary<string, object> variationTargetingVariables = new Dictionary<string, object>();
+        private List<string> postSegmentationVariables = new List<string>();
         private GatewayService _vwo;
+        
 
         public string Id
         {
@@ -57,6 +59,12 @@ namespace VWOFmeSdk.Models.User
         {
             get { return variationTargetingVariables; }
             set { variationTargetingVariables = value; }
+        }
+
+        public List<string> PostSegmentationVariables
+        {
+            get { return postSegmentationVariables; }
+            set { postSegmentationVariables = value; }
         }
 
         public GatewayService Vwo

@@ -64,13 +64,13 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Enums
                 case SegmentOperandRegexEnum.ENDING_STAR:
                     return "\\*$";
                 case SegmentOperandRegexEnum.GREATER_THAN_MATCH:
-                    return "^gt\\((\\d+\\.?\\d*)\\)";
+                    return "^gt\\(([\\d.]+)\\)";
                 case SegmentOperandRegexEnum.GREATER_THAN_EQUAL_TO_MATCH:
-                    return "^gte\\((\\d+\\.?\\d*)\\)";
+                    return "^gte\\(([\\d.]+)\\)";
                 case SegmentOperandRegexEnum.LESS_THAN_MATCH:
-                    return "^lt\\((\\d+\\.?\\d*)\\)";
+                    return "^lt\\(([\\d.]+)\\)";
                 case SegmentOperandRegexEnum.LESS_THAN_EQUAL_TO_MATCH:
-                    return "^lte\\((\\d+\\.?\\d*)\\)";
+                    return "^lte\\(([\\d.]+)\\)";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operand), operand, null);
             }

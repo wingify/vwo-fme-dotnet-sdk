@@ -35,7 +35,10 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Enums
         BROWSER_AGENT,
         UA,
         DEVICE,
-        FEATURE_ID
+        FEATURE_ID,
+        IP,
+        BROWSER_VERSION,
+        OS_VERSION
     }
 
     public static class SegmentOperatorValueEnumExtensions
@@ -77,6 +80,12 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Enums
                     return "device";
                 case SegmentOperatorValueEnum.FEATURE_ID:
                     return "featureId";
+                case SegmentOperatorValueEnum.IP:
+                    return "ip_address";
+                case SegmentOperatorValueEnum.BROWSER_VERSION:
+                    return "browser_version";
+                case SegmentOperatorValueEnum.OS_VERSION:
+                    return "os_version";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operand), operand, null);
             }
@@ -114,6 +123,12 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Enums
                     return SegmentOperatorValueEnum.DEVICE;
                 case "featureId":
                     return SegmentOperatorValueEnum.FEATURE_ID;
+                case "ip_address":
+                    return SegmentOperatorValueEnum.IP;
+                case "browser_version":
+                    return SegmentOperatorValueEnum.BROWSER_VERSION;
+                case "os_version":
+                    return SegmentOperatorValueEnum.OS_VERSION;
                 default:
                     throw new ArgumentException("No enum constant with value " + value);
             }

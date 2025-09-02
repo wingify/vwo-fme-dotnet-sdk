@@ -27,7 +27,8 @@ using VWOFmeSdk.Packages.SegmentationEvaluator.Enums;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Utils;
-
+using System.Linq;
+using Newtonsoft.Json;
 namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
 {
     public class SegmentOperandEvaluator
@@ -180,6 +181,145 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
             return ExtractResult(operandType, processedValues["operandValue"].ToString().Trim().Replace("\"", ""), tagValue);
         }
 
+        /// <summary>
+        /// Evaluates a given string tag value against a DSL operand value.
+        /// </summary>
+        /// <param name="dslOperandValue">The DSL operand string (e.g., "contains(\"value\")").</param>
+        /// <param name="context">The context object containing the value to evaluate.</param>
+        /// <param name="operandType">The type of operand being evaluated (ip_address, browser_version, os_version).</param>
+        /// <returns>True if tag value matches DSL operand criteria, false otherwise.</returns>
+        public bool EvaluateStringOperandDSL(JToken dslOperandValue, VWOContext context, SegmentOperatorValueEnum operandType)
+        {
+            var operand = dslOperandValue.ToString();
+
+            // Determine the tag value based on operand type
+            var tagValue = GetTagValueForOperandType(context, operandType);
+
+            if (tagValue == null)
+            {
+                LogMissingContextError(operandType);
+                return false;
+            }
+            
+            var operandTypeAndValue = PreProcessOperandValue(operand);
+            var processedValues = ProcessValues(operandTypeAndValue["operandValue"], tagValue);
+            tagValue = (string)processedValues["tagValue"];
+            return ExtractResult((SegmentOperandValueEnum)operandTypeAndValue["operandType"], processedValues["operandValue"].ToString().Trim().Replace("\"", ""), tagValue);
+        }
+
+        /// <summary>
+        /// Gets the appropriate tag value based on the operand type.
+        /// </summary>
+        /// <param name="context">The context object.</param>
+        /// <param name="operandType">The type of operand.</param>
+        /// <returns>The tag value or null if not available.</returns>
+        private string GetTagValueForOperandType(VWOContext context, SegmentOperatorValueEnum operandType)
+        {
+            switch (operandType)
+            {
+                case SegmentOperatorValueEnum.IP:
+                    return context.IpAddress;
+                case SegmentOperatorValueEnum.BROWSER_VERSION:
+                    return GetBrowserVersionFromContext(context);
+                default:
+                    // Default works for OS version
+                    return GetOsVersionFromContext(context);
+            }
+        }
+
+        /// <summary>
+        /// Gets browser version from context.
+        /// </summary>
+        /// <param name="context">The context object.</param>
+        /// <returns>The browser version or null if not available.</returns>
+        private string GetBrowserVersionFromContext(VWOContext context)
+        {
+            if (context.Vwo?.UserAgent == null || context.Vwo.UserAgent.Count == 0)
+            {
+                return null;
+            }
+            
+            // Assuming UserAgent dictionary contains browser_version
+            if (context.Vwo.UserAgent.ContainsKey("browser_version"))
+            {
+                return context.Vwo.UserAgent["browser_version"]?.ToString();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Gets OS version from context.
+        /// </summary>
+        /// <param name="context">The context object.</param>
+        /// <returns>The OS version or null if not available.</returns>
+        private string GetOsVersionFromContext(VWOContext context)
+        {
+            if (context.Vwo?.UserAgent == null || context.Vwo.UserAgent.Count == 0)
+            {
+                return null;
+            }
+            
+            // Assuming UserAgent dictionary contains os_version
+            if (context.Vwo.UserAgent.ContainsKey("os_version"))
+            {
+                return context.Vwo.UserAgent["os_version"]?.ToString();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Logs appropriate error message for missing context.
+        /// </summary>
+        /// <param name="operandType">The type of operand.</param>
+        private void LogMissingContextError(SegmentOperatorValueEnum operandType)
+        {
+            switch (operandType)
+            {
+                case SegmentOperatorValueEnum.IP:
+                    LoggerService.Log(LogLevelEnum.INFO, "To evaluate IP segmentation, please provide ipAddress in context");
+                    break;
+                case SegmentOperatorValueEnum.BROWSER_VERSION:
+                    LoggerService.Log(LogLevelEnum.INFO, "To evaluate browser version segmentation, please provide userAgent in context");
+                    break;
+                default:
+                    LoggerService.Log(LogLevelEnum.INFO, "To evaluate OS version segmentation, please provide userAgent in context");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Compares two version strings using semantic versioning rules.
+        /// Supports formats like "1.2.3", "1.0", "2.1.4.5", etc.
+        /// </summary>
+        /// <param name="version1">First version string</param>
+        /// <param name="version2">Second version string</param>
+        /// <returns>-1 if version1 < version2, 0 if equal, 1 if version1 > version2</returns>
+        private int CompareVersions(string version1, string version2)
+        {
+            // Split versions by dots and convert to integers
+            var parts1 = version1.Split('.').Select(part => int.TryParse(part, out int num) ? num : 0).ToArray();
+            var parts2 = version2.Split('.').Select(part => int.TryParse(part, out int num) ? num : 0).ToArray();
+
+            // Find the maximum length to handle different version formats
+            var maxLength = Math.Max(parts1.Length, parts2.Length);
+
+            for (int i = 0; i < maxLength; i++)
+            {
+                var part1 = i < parts1.Length ? parts1[i] : 0;
+                var part2 = i < parts2.Length ? parts2[i] : 0;
+
+                if (part1 < part2)
+                {
+                    return -1;
+                }
+                else if (part1 > part2)
+                {
+                    return 1;
+                }
+            }
+            return 0; // Versions are equal
+        }
+
         public string PreProcessTagValue(string tagValue)
         {
             if (tagValue == null)
@@ -245,16 +385,16 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
                     }
                     break;
                 case SegmentOperandValueEnum.GREATER_THAN_VALUE:
-                    result = float.Parse(tagValue) > float.Parse(operandValue.ToString());
+                    result = CompareVersions(tagValue, operandValue.ToString()) > 0;
                     break;
                 case SegmentOperandValueEnum.GREATER_THAN_EQUAL_TO_VALUE:
-                    result = float.Parse(tagValue) >= float.Parse(operandValue.ToString());
+                    result = CompareVersions(tagValue, operandValue.ToString()) >= 0;
                     break;
                 case SegmentOperandValueEnum.LESS_THAN_VALUE:
-                    result = float.Parse(tagValue) < float.Parse(operandValue.ToString());
+                    result = CompareVersions(tagValue, operandValue.ToString()) < 0;
                     break;
                 case SegmentOperandValueEnum.LESS_THAN_EQUAL_TO_VALUE:
-                    result = float.Parse(tagValue) <= float.Parse(operandValue.ToString());
+                    result = CompareVersions(tagValue, operandValue.ToString()) <= 0;
                     break;
                 default:
                     result = tagValue.Equals(operandValue.ToString());

@@ -36,7 +36,7 @@ namespace VWOFmeSdk.Utils
         /// <param name="context"></param>
         public static void CreateAndSendImpressionForVariationShown(Settings settings, int campaignId, int variationId, VWOContext context)
         {
-            var payload = NetworkUtil.GetTrackUserPayloadData(settings, context.Id, EventEnum.VWO_VARIATION_SHOWN.GetValue(), campaignId, variationId, context.UserAgent, context.IpAddress);
+            var payload = NetworkUtil.GetTrackUserPayloadData(settings, EventEnum.VWO_VARIATION_SHOWN.GetValue(), campaignId, variationId, context);
             var vwoInstance = VWO.GetInstance();
             // Check if batch events are enabled
             if (vwoInstance.BatchEventQueue != null)

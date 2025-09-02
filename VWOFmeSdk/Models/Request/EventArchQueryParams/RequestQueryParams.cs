@@ -32,8 +32,10 @@ namespace VWOFmeSdk.Models.Request.EventArchQueryParams
         private string visitorUa;
         private string visitorIp;
         private string url;
+        private string sn; // SDK name
+        private string sv; // SDK version
 
-        public RequestQueryParams(string eventName, string accountId, string sdkKey, string visitorUserAgent, string ipAddress, string url)
+        public RequestQueryParams(string eventName, string accountId, string sdkKey, string visitorUserAgent, string ipAddress, string url, string sdkName, string sdkVersion)
         {
             this.en = eventName;
             this.a = accountId;
@@ -44,6 +46,8 @@ namespace VWOFmeSdk.Models.Request.EventArchQueryParams
             this.visitorUa = visitorUserAgent;
             this.visitorIp = ipAddress;
             this.url = url;
+            this.sn = sdkName;
+            this.sv = sdkVersion;
         }
 
         public Dictionary<string, string> GetQueryParams()
@@ -56,7 +60,9 @@ namespace VWOFmeSdk.Models.Request.EventArchQueryParams
                 { "random", this.random.ToString() },
                 { "p", this.p },
                 { "visitor_ua", this.visitorUa },
-                { "visitor_ip", this.visitorIp }
+                { "visitor_ip", this.visitorIp },
+                { "sn", this.sn },
+                { "sv", this.sv }
             };
             
             // Only add env parameter if it's not null or empty

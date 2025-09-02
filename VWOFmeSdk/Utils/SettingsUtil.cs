@@ -102,7 +102,7 @@ namespace VWOFmeSdk.Utils
         /// <param name="settings"></param>
         private static void AddIsGatewayServiceRequiredFlag(Settings settings)
         {
-            var pattern = new Regex(@"\b(country|region|city|os|device_type|browser_string|ua)\b|""custom_variable""\s*:\s*{\s*""name""\s*:\s*""inlist\([^)]*\)""");
+            var pattern = new Regex(@"\b(country|region|city|os|device_type|browser_string|ua|browser_version|os_version)\b|""custom_variable""\s*:\s*{\s*""name""\s*:\s*""inlist\([^)]*\)""");
 
             foreach (var feature in settings.Features)
             {
@@ -130,7 +130,7 @@ namespace VWOFmeSdk.Utils
 
                     foreach (Match match in matches)
                     {
-                        if (Regex.IsMatch(match.Value, @"\b(country|region|city|os|device_type|browser_string|ua)\b"))
+                        if (Regex.IsMatch(match.Value, @"\b(country|region|city|os|device_type|browser_string|ua|os_version|browser_version)\b"))
                         {
                             if (!IsWithinCustomVariable(match.Index, jsonSegments))
                             {

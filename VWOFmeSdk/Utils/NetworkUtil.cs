@@ -70,7 +70,9 @@ namespace VWOFmeSdk.Utils
                 isUsageStatsEvent ? null : sdkKey, // Only set env if not usage stats event
                 visitorUserAgent,
                 ipAddress,
-                GenerateEventUrl()
+                GenerateEventUrl(),
+                ConstantsNamespace.Constants.SDK_NAME,
+                SDKMetaUtil.GetSdkVersion()
             );
             return requestQueryParams.GetQueryParams();
         }
@@ -192,23 +194,62 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Generates a random string
+        /// Generates track user payload data with post-segmentation variables and user agent information
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="userId"></param>
-        /// <param name="eventName"></param>
-        /// <param name="campaignId"></param>
-        /// <param name="variationId"></param>
-        /// <param name="visitorUserAgent"></param>
-        /// <param name="ipAddress"></param>
-        /// <returns></returns>
-        public static Dictionary<string, object> GetTrackUserPayloadData(Settings settings, string userId, string eventName, int campaignId, int variationId, string visitorUserAgent, string ipAddress)
+        /// <param name="settings">The settings object</param>
+        /// <param name="eventName">The event name</param>
+        /// <param name="campaignId">The campaign ID</param>
+        /// <param name="variationId">The variation ID</param>
+        /// <param name="context">The VWO context containing user information</param>
+        /// <returns>Array containing the track user payload data</returns>
+        public static Dictionary<string, object> GetTrackUserPayloadData(Settings settings, string eventName, int campaignId, int variationId, VWOContext context)
         {
+            var userId = context.Id;
+            var visitorUserAgent = context.UserAgent;
+            var ipAddress = context.IpAddress;
+            var postSegmentationVariables = context.PostSegmentationVariables;
+            var customVariables = context.CustomVariables;
+
             var properties = GetEventBasePayload(settings, userId, eventName, visitorUserAgent, ipAddress);
             properties.D.Event.Props.Id = campaignId;
             properties.D.Event.Props.Variation = variationId.ToString(CultureInfo.InvariantCulture);
             properties.D.Event.Props.IsFirst = 1;
             
+
+            // Add post-segmentation variables if they exist in custom variables
+            if (postSegmentationVariables != null && customVariables != null)
+            {
+                foreach (var key in postSegmentationVariables)
+                {
+                    if (customVariables.ContainsKey(key))
+                    {
+                        properties.D.Visitor.Props[key] = customVariables[key];
+                    }
+                }
+            }
+
+            // Add IP address as a standard attribute if available
+            if (!string.IsNullOrEmpty(ipAddress))
+            {
+                properties.D.Visitor.Props["ip"] = ipAddress;
+            }
+
+            // If userAgent is passed, add os_version and browser_version
+            if (!string.IsNullOrEmpty(visitorUserAgent))
+            {
+                var uaInfo = context.Vwo?.UserAgent;
+                if (uaInfo != null && uaInfo.Count > 0)
+                {
+                    if (uaInfo.ContainsKey("os_version"))
+                    {
+                        properties.D.Visitor.Props["vwo_osv"] = uaInfo["os_version"];
+                    }
+                    if (uaInfo.ContainsKey("browser_version"))
+                    {
+                        properties.D.Visitor.Props["vwo_bv"] = uaInfo["browser_version"];
+                    }
+                }
+            }
 
             LoggerService.Log(LogLevelEnum.DEBUG, "IMPRESSION_FOR_TRACK_USER", new Dictionary<string, string>
             {
@@ -330,7 +371,9 @@ namespace VWOFmeSdk.Utils
                 var query = new Dictionary<string, string>
                 {
                     { "a", accountId.ToString()},
-                    {"env", sdkKey}
+                    {"env", sdkKey},
+                    {"sn", ConstantsNamespace.Constants.SDK_NAME},
+                    {"sv", SDKMetaUtil.GetSdkVersion()}
                 };
 
 
