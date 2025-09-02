@@ -71,5 +71,32 @@ namespace VWOFmeSdk.Utils
             }
         }
 
+        /// <summary>
+        /// Sends a usage stats event to VWO.
+        /// This event is triggered when the SDK is initialized.
+        /// </summary>
+        /// <param name="usageStatsAccountId">The account ID for usage statistics</param>
+        public static void SendSDKUsageStatsEvent(int usageStatsAccountId)
+        {
+            try
+            {
+                // Create the query parameters
+                var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VWO_USAGE_STATS_EVENT.GetValue(), null, null, true, usageStatsAccountId);
+
+                // Create the payload with required fields
+                var payload = NetworkUtil.GetSDKUsageStatsEventPayload(EventEnum.VWO_USAGE_STATS_EVENT.GetValue(), usageStatsAccountId);
+
+                // Send the constructed properties and payload as a POST request
+                NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_USAGE_STATS_EVENT.GetValue());
+            }
+            catch (Exception ex)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "SDK_USAGE_STATS_EVENT_ERROR", new Dictionary<string, string>
+                {
+                    { "error", ex.Message }
+                });
+            }
+        }
+
     }
 } 

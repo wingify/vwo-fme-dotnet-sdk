@@ -25,7 +25,8 @@ namespace VWOFmeSdk.Enums
         VWO_VARIATION_SHOWN,
         VWO_SYNC_VISITOR_PROP,
         VWO_ERROR,
-        VWO_SDK_INIT_EVENT
+        VWO_SDK_INIT_EVENT,
+        VWO_USAGE_STATS_EVENT
     }
 
     public static class EventEnumExtensions
@@ -42,6 +43,8 @@ namespace VWOFmeSdk.Enums
                     return "vwo_log";
                 case EventEnum.VWO_SDK_INIT_EVENT:
                     return "vwo_fmeSdkInit";
+                case EventEnum.VWO_USAGE_STATS_EVENT:
+                    return "vwo_sdkUsageStats";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(eventEnum), eventEnum, null);
             }

@@ -35,7 +35,7 @@ namespace VWOFmeSdk.Models.User
         private Connector storage;
         private int? pollInterval;
         private VWOBuilder vwoBuilder;
-        private Dictionary<string, object> gatewayService = new Dictionary<string, object>();
+        private Dictionary<string, object> gatewayService;
         private BatchEventData batchEventData;
         private bool isUsageStatsDisabled;
         private Dictionary<string, object> vwoMetaData = new Dictionary<string, object>();

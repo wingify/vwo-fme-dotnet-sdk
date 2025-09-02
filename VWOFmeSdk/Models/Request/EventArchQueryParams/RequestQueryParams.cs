@@ -52,13 +52,25 @@ namespace VWOFmeSdk.Models.Request.EventArchQueryParams
             {
                 { "en", this.en },
                 { "a", this.a },
-                { "env", this.env },
                 { "eTime", this.eTime.ToString() },
                 { "random", this.random.ToString() },
                 { "p", this.p },
                 { "visitor_ua", this.visitorUa },
                 { "visitor_ip", this.visitorIp }
             };
+            
+            // Only add env parameter if it's not null or empty
+            if (!string.IsNullOrEmpty(this.env))
+            {
+                queryParams.Add("env", this.env);
+            }
+            
+            // Add url parameter
+            if (!string.IsNullOrEmpty(this.url))
+            {
+                queryParams.Add("url", this.url);
+            }
+            
             return queryParams;
         }
 

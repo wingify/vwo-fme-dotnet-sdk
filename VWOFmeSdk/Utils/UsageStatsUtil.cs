@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Packages.Logger.Enums;
+using VWOFmeSdk.Services;
 
 namespace VWOFmeSdk.Utils
 {
@@ -50,6 +51,8 @@ namespace VWOFmeSdk.Utils
         public void SetUsageStats(VWOInitOptions options)
         {
             var data = new Dictionary<string, object>();
+            data["a"] = SettingsManager.GetInstance().AccountId;
+            data["env"] = SettingsManager.GetInstance().SdkKey;
 
             // Map configuration options to usage stats flags
             if (options.Integrations != null) data["ig"] = 1;
@@ -90,6 +93,8 @@ namespace VWOFmeSdk.Utils
             if (options.Storage != null) data["ss"] = 1;
             if (options.GatewayService != null) data["gs"] = 1;
             if (options.PollInterval != null) data["pi"] = 1;
+
+            if(options.BatchEventData != null) data["be"] = 1;
 
             // Handle _vwo_meta
             if (options.VwoMetaData != null && options.VwoMetaData is Dictionary<string, object> vwoMetaMap)

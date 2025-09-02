@@ -49,20 +49,25 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Generates a random string
+        /// Generates base properties for events with conditional SDK key and account ID handling
         /// </summary>
-        /// <param name="setting"></param>
-        /// <param name="eventName"></param>
-        /// <param name="visitorUserAgent"></param>
-        /// <param name="ipAddress"></param>
-        /// <returns></returns>
-        public static Dictionary<string, string> GetEventsBaseProperties(string eventName, string visitorUserAgent = "", string ipAddress = "")
+        /// <param name="eventName">Name of the event</param>
+        /// <param name="visitorUserAgent">Visitor user agent string</param>
+        /// <param name="ipAddress">Visitor IP address</param>
+        /// <param name="isUsageStatsEvent">Whether this is a usage stats event</param>
+        /// <param name="usageStatsAccountId">Account ID to use for usage stats events</param>
+        /// <returns>Dictionary containing the event base properties</returns>
+        public static Dictionary<string, string> GetEventsBaseProperties(string eventName, string visitorUserAgent = "", string ipAddress = "", bool isUsageStatsEvent = false, int? usageStatsAccountId = null)
         {
             string sdkKey = SettingsManager.GetInstance().SdkKey;
+            string accountId = isUsageStatsEvent && usageStatsAccountId.HasValue 
+                ? usageStatsAccountId.Value.ToString() 
+                : SettingsManager.GetInstance().AccountId.ToString();
+            
             var requestQueryParams = new RequestQueryParams(
                 eventName,
-                SettingsManager.GetInstance().AccountId.ToString(),
-                sdkKey,
+                accountId,
+                isUsageStatsEvent ? null : sdkKey, // Only set env if not usage stats event
                 visitorUserAgent,
                 ipAddress,
                 GenerateEventUrl()
@@ -71,17 +76,23 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// Generates a random string
+        /// Generates base payload for events with conditional SDK key and visitor handling
         /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="userId"></param>
-        /// <param name="eventName"></param>
-        /// <param name="visitorUserAgent"></param>
-        /// <param name="ipAddress"></param>
-        /// <returns></returns>
-        public static EventArchPayload GetEventBasePayload(Settings settings, string userId, string eventName, string visitorUserAgent, string ipAddress)
+        /// <param name="settings">Settings object</param>
+        /// <param name="userId">User ID</param>
+        /// <param name="eventName">Event name</param>
+        /// <param name="visitorUserAgent">Visitor user agent string</param>
+        /// <param name="ipAddress">Visitor IP address</param>
+        /// <param name="isUsageStatsEvent">Whether this is a usage stats event</param>
+        /// <param name="usageStatsAccountId">Account ID to use for usage stats events</param>
+        /// <returns>EventArchPayload object</returns>
+        public static EventArchPayload GetEventBasePayload(Settings settings, string userId, string eventName, string visitorUserAgent = "", string ipAddress = "", bool isUsageStatsEvent = false, int? usageStatsAccountId = null)
         {
-            string uuid = UUIDUtils.GetUUID(userId, SettingsManager.GetInstance().AccountId.ToString());
+            string accountId = isUsageStatsEvent && usageStatsAccountId.HasValue 
+                ? usageStatsAccountId.Value.ToString() 
+                : SettingsManager.GetInstance().AccountId.ToString();
+            
+            string uuid = UUIDUtils.GetUUID(userId, accountId);
             var eventArchData = new EventArchData
             {
                 MsgId = GenerateMsgId(uuid),
@@ -90,11 +101,14 @@ namespace VWOFmeSdk.Utils
             };
             SetOptionalVisitorData(eventArchData, visitorUserAgent, ipAddress);
 
-            var @event = CreateEvent(eventName, settings);
+            var @event = CreateEvent(eventName, settings, isUsageStatsEvent);
             eventArchData.Event = @event;
 
-            var visitor = CreateVisitor(settings);
-            eventArchData.Visitor = visitor;
+            if (!isUsageStatsEvent)
+            {
+                var visitor = CreateVisitor(settings);
+                eventArchData.Visitor = visitor;
+            }
 
             var eventArchPayload = new EventArchPayload
             {
@@ -128,11 +142,11 @@ namespace VWOFmeSdk.Utils
         /// <param name="eventName"></param>
         /// <param name="settings"></param>
         /// <returns></returns>
-        private static Event CreateEvent(string eventName, Settings settings)
+        private static Event CreateEvent(string eventName, Settings settings, bool isUsageStatsEvent)
         {
             return new Event
             {
-                Props = CreateProps(settings),
+                Props = CreateProps(settings, isUsageStatsEvent),
                 Name = eventName,
                 Time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
@@ -143,15 +157,23 @@ namespace VWOFmeSdk.Utils
         /// </summary>
         /// <param name="settings"></param>
         /// <returns></returns>
-        private static Props CreateProps(Settings settings)
+        private static Props CreateProps(Settings settings, bool isUsageStatsEvent)
         {
-            return new Props
+            var props = new Props
             {
                 VwoSdkName = ConstantsNamespace.Constants.SDK_NAME,
-                VwoSdkVersion = SDKMetaUtil.GetSdkVersion(),
-                VwoEnvKey = SettingsManager.GetInstance().SdkKey
+                VwoSdkVersion = SDKMetaUtil.GetSdkVersion()
             };
+
+            // Only set env key for standard SDK events
+            if (!isUsageStatsEvent)
+            {
+                props.VwoEnvKey = SettingsManager.GetInstance().SdkKey;
+            }
+
+            return props;
         }
+
 
         /// <summary>
         /// Converts the EventArchPayload object to a dictionary
@@ -187,10 +209,6 @@ namespace VWOFmeSdk.Utils
             properties.D.Event.Props.Variation = variationId.ToString(CultureInfo.InvariantCulture);
             properties.D.Event.Props.IsFirst = 1;
             
-            if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
-            {
-                properties.D.Event.Props.VwoMeta = UsageStatsUtil.GetInstance().GetUsageStats();
-            }
 
             LoggerService.Log(LogLevelEnum.DEBUG, "IMPRESSION_FOR_TRACK_USER", new Dictionary<string, string>
             {
@@ -377,6 +395,35 @@ namespace VWOFmeSdk.Utils
             return ConvertEventArchPayloadToDictionary(properties);
         }
 
+        /// <summary>
+        /// Constructs the payload for SDK usage stats event.
+        /// </summary>
+        /// <param name="eventName">The name of the event.</param>
+        /// <param name="usageStatsAccountId">The account ID for usage statistics.</param>
+        /// <returns>The constructed payload with required fields.</returns>
+        public static Dictionary<string, object> GetSDKUsageStatsEventPayload(string eventName, int usageStatsAccountId)
+        {
+            // Build userId as accountId_sdkKey (not usageStatsAccountId_sdkKey)
+            var userId = SettingsManager.GetInstance().AccountId.ToString() + "_" + SettingsManager.GetInstance().SdkKey;
+
+            // Pass usageStatsAccountId as the last argument to GetEventBasePayload, with isUsageStatsEvent = true
+            var properties = GetEventBasePayload(
+                null,
+                userId,
+                eventName,
+                null,
+                null,
+                true,
+                usageStatsAccountId
+            );
+
+            // Set the required fields as specified
+            properties.D.Event.Props.Product = ConstantsNamespace.Constants.FME;
+            properties.D.Event.Props.VwoMeta = UsageStatsUtil.GetInstance().GetUsageStats();
+
+            return ConvertEventArchPayloadToDictionary(properties);
+        }
+
 
         /// <summary>
         /// Removes all the null values from the dictionary
@@ -483,7 +530,7 @@ namespace VWOFmeSdk.Utils
             var port = SettingsManager.GetInstance().Port;
             var protocol = SettingsManager.GetInstance().Protocol;
 
-            if(eventName == EventEnum.VWO_ERROR.GetValue())
+            if(eventName == EventEnum.VWO_ERROR.GetValue() || eventName == EventEnum.VWO_USAGE_STATS_EVENT.GetValue())
             {
                 baseUrl = ConstantsNamespace.Constants.HOST_NAME;
                 protocol = ConstantsNamespace.Constants.HTTPS_PROTOCOL;
