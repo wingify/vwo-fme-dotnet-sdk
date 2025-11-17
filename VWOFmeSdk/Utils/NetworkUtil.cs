@@ -310,11 +310,15 @@ namespace VWOFmeSdk.Utils
         /// <param name="attributeKey"></param>
         /// <param name="attributeValue"></param>
         /// <returns></returns>
-        public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, string attributeKey, object attributeValue)
+        public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, Dictionary<string, dynamic> attributes)
         {
             var properties = GetEventBasePayload(settings, userId, eventName, null, null);
             properties.D.Event.Props.IsCustomEvent = true;
-            properties.D.Visitor.Props[attributeKey] = attributeValue;
+
+            foreach (var attribute in attributes)
+            {
+                properties.D.Visitor.Props[attribute.Key] = attribute.Value;
+            }
 
             LoggerService.Log(LogLevelEnum.DEBUG, "IMPRESSION_FOR_SYNC_VISITOR_PROP", new Dictionary<string, string>
             {
