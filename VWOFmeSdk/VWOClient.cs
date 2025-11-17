@@ -27,6 +27,8 @@ using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Models.Schemas;
+using System.Linq;
+
 
 namespace VWOFmeSdk
 {
@@ -310,6 +312,91 @@ namespace VWOFmeSdk
                 }
 
                 SetAttributeAPI.SetAttribute(this.processedSettings, attributeKey, attributeValue, context);
+            }
+            catch (Exception exception)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
+                {
+                    { "apiName", apiName },
+                    { "err", exception.ToString() }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Sets multiple attributes for a user in the context provided.
+        /// This method validates the types of the inputs before proceeding with the API call.
+        /// </summary>
+        /// <param name="attributes">A dictionary of attributes</param>
+        /// <param name="context">User context</param>
+        public void SetAttribute(Dictionary<string, dynamic> attributes, VWOContext context)
+        {
+            string apiName = "setAttribute";
+            try
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", apiName } });
+
+                // Validate input parameters
+                if (attributes == null || attributes.Count == 0)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
+                    {
+                        { "apiName", apiName },
+                        { "key", "attributes" },
+                        { "type", "a null or empty attributes dictionary"},
+                        { "correctType", "a non-empty dictionary" },
+                    });
+                }
+
+
+                // Iterate over each attribute and validate its type
+                foreach (var attribute in attributes)
+                {
+                    string key = attribute.Key;
+                    var value = attribute.Value;
+
+                    // Allow only primitive types: bool, string, int, float, double
+                    if (!(value is bool || value is string || value is int || value is float || value is double))
+                    {
+                        LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
+                        {
+                            { "apiName", apiName },
+                            { "key", key },
+                            { "type", value?.GetType().ToString() ?? "null" },
+                            { "correctType", "bool, string, int, float, double" }
+                        });
+
+                        throw new ArgumentException($"Invalid attribute type for key \"{key}\". Expected bool, string, int, float, or double, but got {value?.GetType()}");
+                    }
+
+                    // Reject arrays and complex objects explicitly
+                    if (value is Array || (value is object && !(value is string || value is bool || value is int || value is float || value is double)))
+                    {
+                        LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
+                        {
+                            { "apiName", apiName },
+                            { "key", key },
+                            { "type", value?.GetType().ToString() ?? "null" },
+                            { "correctType", "bool, string, int, float, double" }
+                        });
+
+                        throw new ArgumentException($"Invalid attribute value for key \"{key}\". Arrays and complex objects are not supported.");
+                    }
+                }
+
+                if (context == null || string.IsNullOrEmpty(context.Id))
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "API_CONTEXT_INVALID", new Dictionary<string, string> {});
+                    throw new ArgumentException("Invalid Context");
+                }
+
+                if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    return;
+                }
+
+                SetAttributeAPI.SetAttribute(this.processedSettings, attributes, context);
             }
             catch (Exception exception)
             {

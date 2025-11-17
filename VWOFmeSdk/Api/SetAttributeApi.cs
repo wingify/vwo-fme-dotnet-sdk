@@ -26,15 +26,23 @@ namespace VWOFmeSdk.Api
 {
     public class SetAttributeAPI
     {
-        public static void SetAttribute(Settings settings, string attributeKey, object attributeValue, VWOContext context)
+        public static void SetAttribute(Settings settings, Dictionary<string, dynamic> attributes, VWOContext context)
         {
-            CreateAndSendImpressionForSetAttribute(settings, attributeKey, attributeValue, context);
+            CreateAndSendImpressionForSetAttribute(settings, attributes, context);
+        }
+
+        public static void SetAttribute(Settings settings, string attributeKey, string attributeValue, VWOContext context)
+        {
+            Dictionary<string, dynamic> attributes = new Dictionary<string, dynamic>
+            {
+                { attributeKey, attributeValue }
+            };
+            CreateAndSendImpressionForSetAttribute(settings, attributes, context);
         }
 
         private static void CreateAndSendImpressionForSetAttribute(
             Settings settings,
-            string attributeKey,
-            object attributeValue,
+            Dictionary<string, dynamic> attributes,
             VWOContext context
         )
         {
@@ -48,8 +56,7 @@ namespace VWOFmeSdk.Api
                 settings,
                 context.Id,
                 EventEnum.VWO_SYNC_VISITOR_PROP.GetValue(),
-                attributeKey,
-                attributeValue
+                attributes
             );
 
             var vwoInstance = VWO.GetInstance();
