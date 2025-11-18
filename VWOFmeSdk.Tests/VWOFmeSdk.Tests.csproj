@@ -15,6 +15,10 @@
     <EmbeddedResource Include="Resources\NO_ROLLOUT_ONLY_TESTING_RULE_SETTINGS.json" />
     <EmbeddedResource Include="Resources\ROLLOUT_TESTING_PRE_SEGMENT_RULE_SETTINGS.json" />
     <EmbeddedResource Include="Resources\TESTING_WHITELISTING_SEGMENT_RULE_SETTINGS.json" />
+    <EmbeddedResource Include="Resources\SETTINGS_WITH_NO_FEATURE_AND_CAMPAIGN.json" />
+    <EmbeddedResource Include="Resources\SETTINGS_WITH_WRONG_TYPE_FOR_VALUES.json" />
+    <EmbeddedResource Include="Resources\SETTINGS_WITH_EXTRA_KEYS_AT_ROOT_LEVEL.json" />
+    <EmbeddedResource Include="Resources\SETTINGS_WITH_EXTRA_KEYS_INSIDE_OBJECTS.json" />
 </ItemGroup>
 
 

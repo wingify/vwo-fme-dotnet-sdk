@@ -154,13 +154,18 @@ namespace VWOFmeSdk
                 EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
             }
 
-            var settingsDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
             long? usageStatsAccountId = null;
             
-            if (settingsDict.ContainsKey("usageStatsAccountId"))
+            if (!string.IsNullOrEmpty(originalSettingsString))
             {
-                usageStatsAccountId = Convert.ToInt64(settingsDict["usageStatsAccountId"]);
+                var settingsDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
+                
+                if (settingsDict != null && settingsDict.ContainsKey("usageStatsAccountId"))
+                {
+                    usageStatsAccountId = Convert.ToInt64(settingsDict["usageStatsAccountId"]);
+                }
             }
+            
             if(usageStatsAccountId.HasValue)
             {
                 EventUtil.SendSDKUsageStatsEvent((int)usageStatsAccountId.Value);

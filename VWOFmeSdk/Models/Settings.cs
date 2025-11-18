@@ -18,6 +18,8 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Models
 {
@@ -34,6 +36,7 @@ namespace VWOFmeSdk.Models
         private int version;
         private string collectionPrefix;
 
+        [JsonConverter(typeof(EmptyObjectToArrayConverter<Feature>))]
         public List<Feature> Features
         {
             get { return features; }
@@ -64,6 +67,7 @@ namespace VWOFmeSdk.Models
             set { isNBv2 = value; }
         }
 
+        [JsonConverter(typeof(EmptyObjectToArrayConverter<Campaign>))]
         public List<Campaign> Campaigns
         {
             get { return campaigns; }

@@ -14,15 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma warning disable 1587
+#pragma warning restore 1587
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using VWOFmeSdk.Packages.NetworkLayer.Models;
 using VWOFmeSdk.Interfaces.Networking;
+using VWOFmeSdk.Interfaces.Batching;
 using Newtonsoft.Json;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
@@ -31,11 +35,48 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
 {
     public class NetworkClient : NetworkClientInterface
     {
-        /// <summary>
-        /// Constructs the URL from the network options
-        /// </summary>
-        /// <param name="networkOptions"></param>
-        /// <returns></returns>
+        /// Maximum number of concurrent connections to the server.
+        private const int DEFAULT_MAX_CONNECTIONS = 20;
+        
+        /// Timeout for individual HTTP requests in milliseconds (30 seconds).
+        private const int DEFAULT_CONNECTION_TIMEOUT = 30000;
+
+            
+        /// Thread-safe queue that holds incoming POST requests waiting to be processed.
+        private static ConcurrentQueue<QueuedRequest> requestQueue = new ConcurrentQueue<QueuedRequest>();
+        
+        /// Semaphore that controls the maximum number of concurrent network requests.
+        private static SemaphoreSlim connectionSemaphore = new SemaphoreSlim(GetMaxConnections(), GetMaxConnections());
+        
+        /// Event to signal when new requests are added to the queue.
+        private static ManualResetEventSlim newRequestEvent = new ManualResetEventSlim(false);
+        
+        /// Array of background worker tasks that process requests from the queue.
+        private static Task[] workerTasks = new Task[GetMaxConnections()];
+        
+        /// Token source for graceful cancellation of worker tasks.
+        private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        
+        private static volatile bool isProcessing = false;
+        
+        private static readonly object lockObject = new object();
+        
+        /// Counter to track total requests enqueued (for error logging).
+        private static long totalRequestsEnqueued = 0;
+
+        static NetworkClient()
+        {
+            ServicePointManager.DefaultConnectionLimit = GetMaxConnections();
+            ServicePointManager.UseNagleAlgorithm = false;
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.MaxServicePointIdleTime = 30000;
+        }
+
+        private static int GetMaxConnections()
+        {
+            return DEFAULT_MAX_CONNECTIONS;
+        }
+
         public static string ConstructUrl(Dictionary<string, object> networkOptions)
         {
             string hostname = (string)networkOptions["hostname"];
@@ -102,6 +143,162 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
         /// <returns></returns>
         public ResponseModel POST(RequestModel request)
         {
+            return POST(request, null);
+        }
+
+        public ResponseModel POST(RequestModel request, IFlushInterface flushCallback)
+        {
+            var requestNumber = Interlocked.Increment(ref totalRequestsEnqueued);
+            var enqueueTime = DateTime.UtcNow;
+            
+            var queuedRequest = new QueuedRequest
+            {
+                Request = request,
+                FlushCallback = flushCallback,
+                CompletionSource = new TaskCompletionSource<ResponseModel>(),
+                RequestNumber = requestNumber,
+                EnqueueTime = enqueueTime
+            };
+
+            requestQueue.Enqueue(queuedRequest);
+            
+            // Signal that a new request is available
+            newRequestEvent.Set();
+            
+            if (!isProcessing)
+            {
+                StartProcessing();
+            }
+
+            try
+            {
+                return queuedRequest.CompletionSource.Task.Result;
+            }
+            catch (AggregateException ex)
+            {
+                if (ex.InnerException is TimeoutException)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "REQUEST_TIMEOUT", new Dictionary<string, string>
+                    {
+                        { "method", "POST" },
+                        { "requestNumber", requestNumber.ToString() },
+                        { "err", "Request timed out after waiting in queue" }
+                    });
+                    var errorResponse = new ResponseModel();
+                    errorResponse.SetError(ex.InnerException);
+                    return errorResponse;
+                }
+                throw ex.InnerException;
+            }
+        }
+
+        private static void StartProcessing()
+        {
+            if (isProcessing) return;
+
+            lock (lockObject)
+            {
+                if (isProcessing) return;
+                isProcessing = true;
+                
+                for (int i = 0; i < GetMaxConnections(); i++)
+                {
+                    workerTasks[i] = Task.Run(ProcessRequestsAsync, cancellationTokenSource.Token);
+                }
+            }
+        }
+
+        private static async Task ProcessRequestsAsync()
+        {
+            while (!cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    // First, try to get a request from the queue (without blocking on semaphore)
+                    if (requestQueue.TryDequeue(out QueuedRequest queuedRequest))
+                    {
+                        // We have a request, now wait for a connection slot to become available
+                        await connectionSemaphore.WaitAsync(cancellationTokenSource.Token);
+                        
+                        // Process the request (semaphore will be released in ProcessRequestAsync)
+                        await ProcessRequestAsync(queuedRequest);
+                    }
+                    else
+                    {
+                        // No requests in queue, wait for signal that a new request arrived
+                        // Use a timeout to periodically check for cancellation
+                        try
+                        {
+                            bool signaled = newRequestEvent.Wait(1000, cancellationTokenSource.Token);
+                            newRequestEvent.Reset();
+                            // If not signaled, it timed out - continue loop to check queue again
+                            if (!signaled)
+                            {
+                                continue;
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Expected when cancellation is requested
+                            break;
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when cancellation is requested
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "QUEUE_PROCESSING_ERROR", new Dictionary<string, string>
+                    {
+                        { "err", ex.Message }
+                    });
+                }
+            }
+        }
+
+        private static async Task ProcessRequestAsync(QueuedRequest queuedRequest)
+        {
+            try
+            {
+                var response = await Task.Run(() => ExecutePostRequest(queuedRequest.Request));
+                
+                if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() < 300)
+                {
+                    queuedRequest.FlushCallback?.OnFlush(null, queuedRequest.Request.GetBody());
+                }
+                else
+                {
+                    queuedRequest.FlushCallback?.OnFlush($"Failed with status code: {response?.GetStatusCode()}", null);
+                }
+
+                queuedRequest.CompletionSource.SetResult(response);
+            }
+            catch (Exception ex)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "REQUEST_PROCESSING_ERROR", new Dictionary<string, string>
+                {
+                    { "method", "POST" },
+                    { "requestNumber", queuedRequest.RequestNumber.ToString() },
+                    { "err", ex.Message }
+                });
+
+                queuedRequest.FlushCallback?.OnFlush($"Error occurred while processing request: {ex.Message}", null);
+
+                var errorResponse = new ResponseModel();
+                errorResponse.SetError(ex);
+                queuedRequest.CompletionSource.SetResult(errorResponse);
+            }
+            finally
+            {
+                connectionSemaphore.Release();
+            }
+        }
+
+        private static ResponseModel ExecutePostRequest(RequestModel request)
+        {
             ResponseModel responseModel = new ResponseModel();
 
             try
@@ -112,7 +309,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 HttpWebRequest connection = WebRequest.CreateHttp(url);
                 connection.Method = "POST";
                 connection.Accept = "application/json";
-                connection.Timeout = 5000;
+                connection.Timeout = DEFAULT_CONNECTION_TIMEOUT;
 
                 if (networkOptions.ContainsKey("headers"))
                 {
@@ -151,17 +348,26 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
             }
             catch (WebException webEx)
             {
-                using (var responseStream = webEx.Response.GetResponseStream())
-                using (var reader = new StreamReader(responseStream))
+                string responseText = "";
+                try
                 {
-                    string responseText = reader.ReadToEnd();
-                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                    if (webEx.Response != null)
                     {
-                        { "method", "POST" },
-                        { "err", webEx.Message },
-                        { "response", responseText }
-                    });
+                        using (var responseStream = webEx.Response.GetResponseStream())
+                        using (var reader = new StreamReader(responseStream))
+                        {
+                            responseText = reader.ReadToEnd();
+                        }
+                    }
                 }
+                catch { }
+
+                LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                {
+                    { "method", "POST" },
+                    { "err", webEx.Message },
+                    { "response", responseText }
+                });
                 responseModel.SetError(webEx);
                 return responseModel;
             }
@@ -176,5 +382,14 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 return responseModel;
             }
         }
+    }
+
+    internal class QueuedRequest
+    {
+        public RequestModel Request { get; set; }
+        public IFlushInterface FlushCallback { get; set; }
+        public TaskCompletionSource<ResponseModel> CompletionSource { get; set; }
+        public long RequestNumber { get; set; }
+        public DateTime EnqueueTime { get; set; }
     }
 }

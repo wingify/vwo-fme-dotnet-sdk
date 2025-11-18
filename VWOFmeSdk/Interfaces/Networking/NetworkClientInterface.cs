@@ -17,6 +17,7 @@
 #pragma warning restore 1587
 
 using VWOFmeSdk.Packages.NetworkLayer.Models;
+using VWOFmeSdk.Interfaces.Batching;
 
 namespace VWOFmeSdk.Interfaces.Networking
 {
@@ -35,5 +36,13 @@ namespace VWOFmeSdk.Interfaces.Networking
         /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
         /// <returns>A ResponseModel containing the response data.</returns>
         ResponseModel POST(RequestModel request);
+
+        /// <summary>
+        /// Sends a POST request to the server with callback support.
+        /// </summary>
+        /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
+        /// <param name="flushCallback">Optional callback for batch operations</param>
+        /// <returns>A ResponseModel containing the response data.</returns>
+        ResponseModel POST(RequestModel request, IFlushInterface flushCallback);
     }
 }

@@ -14,9 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma warning disable 1587
+#pragma warning restore 1587
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using VWOFmeSdk.Interfaces.Networking;
 using VWOFmeSdk.Packages.NetworkLayer.Client;
@@ -39,7 +40,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 
         private NetworkManager()
         {
-            // Initialize default executor service
             this.executorService = new TaskFactory(TaskScheduler.Default);
         }
 
@@ -47,7 +47,13 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         {
             if (instance == null)
             {
-                instance = new NetworkManager();
+                lock (typeof(NetworkManager))
+                {
+                    if (instance == null)
+                    {
+                        instance = new NetworkManager();
+                    }
+                }
             }
             return instance;
         }
@@ -108,7 +114,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         /// <returns></returns>
         public ResponseModel Post(RequestModel request, IFlushInterface flushCallback = null)
         {
-            ResponseModel response = null;
             try
             {
                 var networkOptions = CreateRequest(request);
@@ -117,24 +122,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                     return null;
                 }
 
-                // Perform the actual POST request
-                response = client.POST(request);
-
-                // Handle the response and trigger callback based on success or failure
-                if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() < 300)
-                {
-                    if (flushCallback != null)
-                    {
-                        flushCallback.OnFlush(null, request.GetBody());  // Success, pass request body to callback
-                    }
-                }
-                else
-                {
-                    if (flushCallback != null)
-                    {
-                        flushCallback.OnFlush($"Failed with status code: {response?.GetStatusCode()}", null);  // Failure, pass error message
-                    }
-                }
+                return client.POST(request, flushCallback);
             }
             catch (Exception error)
             {
@@ -145,7 +133,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                 }
                 return null;
             }
-            return response;
         }
 
         /// <summary>
@@ -156,13 +143,23 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         {
             executorService.StartNew(() => 
             {
-                var response = Post(request);
-                if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() <= 299)
+                try
                 {
-                    if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
+                    var response = Post(request);
+                    if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() <= 299)
                     {
-                        UsageStatsUtil.GetInstance().ClearUsageStats();
+                        if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
+                        {
+                            UsageStatsUtil.GetInstance().ClearUsageStats();
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "ASYNC_POST_ERROR", new Dictionary<string, string>
+                    {
+                        { "err", ex.Message }
+                    });
                 }
             });
         }

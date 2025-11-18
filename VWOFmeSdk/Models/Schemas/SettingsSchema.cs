@@ -18,6 +18,8 @@
 
 using System.Collections.Generic;
 using VWOFmeSdk.Models;
+using VWOFmeSdk.Services;
+using VWOFmeSdk.Packages.Logger.Enums;
 
 namespace VWOFmeSdk.Models.Schemas
 {
@@ -30,23 +32,45 @@ namespace VWOFmeSdk.Models.Schemas
                 return false;
             }
 
-            // Validate Settings fields
-            if (settings.Version == null || settings.AccountId == null)
+            // Validate Settings fields - check required fields and log specific errors
+            if (settings.Version == null)
             {
                 return false;
             }
 
-            if (settings.Campaigns == null || settings.Campaigns.Count == 0)
+            if (settings.AccountId == null)
             {
+                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_ACCOUNT_ID_MISSING", null);
                 return false;
             }
 
-            foreach (var campaign in settings.Campaigns)
+            if (string.IsNullOrEmpty(settings.SdkKey))
             {
-                if (!IsValidCampaign(campaign))
+                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SDK_KEY_MISSING", null);
+                return false;
+            }
+
+            // Allow empty campaigns - it's valid to have no campaigns set up
+            // if campaingns in empty, then  normalize to empty list
+            if (settings.Campaigns == null)
+            {
+                settings.Campaigns = new List<Campaign>();
+            }
+
+            if (settings.Campaigns.Count > 0)
+            {
+                foreach (var campaign in settings.Campaigns)
                 {
-                    return false;
+                    if (!IsValidCampaign(campaign))
+                    {
+                        return false;
+                    }
                 }
+            }
+
+            if(settings.Features == null)
+            {
+                settings.Features = new List<Feature>();
             }
 
             if (settings.Features != null)

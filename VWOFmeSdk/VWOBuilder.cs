@@ -119,18 +119,37 @@ namespace VWOFmeSdk
         {
             LoggerService.Log(LogLevelEnum.DEBUG, "API - SetSettings called");
 
+            if (string.IsNullOrEmpty(settings))
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "Settings string is null or empty. Settings will not be set.");
+                return;
+            }
+            // Store the original settings as a string
+            originalSettings = settings;
+
             try
             {
-                // Store the original settings as a string
-                originalSettings = settings;
-
                 // Deserialize the JSON string into a Settings object
-                var settingsObject = JsonConvert.DeserializeObject<Settings>(settings);
-
-                // // Validate the settings
-                if (settingsObject == null || !new SettingsSchema().IsSettingsValid(settingsObject))
+                Settings settingsObject;
+                try
                 {
-                    throw new InvalidOperationException("Provided settings are invalid or do not match the schema.");
+                    settingsObject = JsonConvert.DeserializeObject<Settings>(settings);
+                }
+                catch (JsonReaderException jsonEx)
+                {
+                    string path = jsonEx.Path ?? "unknown";
+                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_JSON_PARSE_ERROR", new Dictionary<string, string>
+                    {
+                        { "path", path },
+                        { "error", jsonEx.Message }
+                    });
+                    return;
+                }
+
+                if (settingsObject == null)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    return;
                 }
 
                 // Process the settings using SettingsUtil
@@ -147,7 +166,6 @@ namespace VWOFmeSdk
             catch (Exception ex)
             {
                 LoggerService.Log(LogLevelEnum.ERROR, "Error occurred while setting settings manually: " + ex.Message);
-                throw;
             }
         }
 
