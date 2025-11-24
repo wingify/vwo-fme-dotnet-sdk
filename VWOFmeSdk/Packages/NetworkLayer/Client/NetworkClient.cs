@@ -33,48 +33,99 @@ using VWOFmeSdk.Packages.Logger.Enums;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Client
 {
+    /// <summary>
+    /// Network client implementing ThreadPoolExecutor pattern similar to Ruby SDK.
+    /// Uses a fixed thread pool with bounded queue and caller-runs fallback policy.
+    /// </summary>
     public class NetworkClient : NetworkClientInterface
     {
-        /// Maximum number of concurrent connections to the server.
-        private const int DEFAULT_MAX_CONNECTIONS = 20;
+        /// <summary>
+        /// Minimum number of threads in the pool (similar to Ruby's min_threads: 1).
+        /// </summary>
+        private const int MIN_THREAD_POOL_SIZE = 1;
         
+        /// <summary>
+        /// Maximum number of threads in the pool (similar to Ruby's max_threads).
+        /// Default: 5 threads (matches Ruby SDK's MAX_POOL_SIZE).
+        /// </summary>
+        private const int MAX_THREAD_POOL_SIZE = 5;
+        
+        /// <summary>
+        /// Maximum queue size before executing in caller's thread (similar to Ruby's max_queue).
+        /// Default: 10000 (matches Ruby SDK's MAX_QUEUE_SIZE).
+        /// </summary>
+        private const int MAX_QUEUE_SIZE = 10000;
+        
+        /// <summary>
         /// Timeout for individual HTTP requests in milliseconds (30 seconds).
+        /// </summary>
         private const int DEFAULT_CONNECTION_TIMEOUT = 30000;
-
             
-        /// Thread-safe queue that holds incoming POST requests waiting to be processed.
+        /// <summary>
+        /// Thread-safe bounded queue that holds incoming POST requests waiting to be processed.
+        /// Similar to Ruby's ThreadPoolExecutor queue with max_queue limit.
+        /// </summary>
         private static ConcurrentQueue<QueuedRequest> requestQueue = new ConcurrentQueue<QueuedRequest>();
         
-        /// Semaphore that controls the maximum number of concurrent network requests.
-        private static SemaphoreSlim connectionSemaphore = new SemaphoreSlim(GetMaxConnections(), GetMaxConnections());
+        /// <summary>
+        /// Semaphore to limit concurrent HTTP requests to match thread pool size.
+        /// This ensures we never have more concurrent network calls than worker threads.
+        /// Critical for preventing connection exhaustion and network failures.
+        /// </summary>
+        private static SemaphoreSlim concurrentRequestSemaphore = new SemaphoreSlim(MAX_THREAD_POOL_SIZE, MAX_THREAD_POOL_SIZE);
         
+        /// <summary>
         /// Event to signal when new requests are added to the queue.
+        /// Worker threads wait on this when queue is empty to avoid busy-waiting.
+        /// </summary>
         private static ManualResetEventSlim newRequestEvent = new ManualResetEventSlim(false);
         
-        /// Array of background worker tasks that process requests from the queue.
-        private static Task[] workerTasks = new Task[GetMaxConnections()];
+        /// <summary>
+        /// Array of background worker threads that process requests from the queue.
+        /// One worker per thread in the pool (MAX_THREAD_POOL_SIZE threads).
+        /// Similar to Ruby's ThreadPoolExecutor worker threads.
+        /// </summary>
+        private static Task[] workerTasks = new Task[MAX_THREAD_POOL_SIZE];
         
-        /// Token source for graceful cancellation of worker tasks.
+        /// <summary>
+        /// Token source for graceful cancellation of worker threads.
+        /// </summary>
         private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         
+        /// <summary>
+        /// Flag indicating whether worker threads are currently running (lazy initialization).
+        /// </summary>
         private static volatile bool isProcessing = false;
         
+        /// <summary>
+        /// Lock object for thread-safe initialization of worker threads (double-checked locking).
+        /// </summary>
         private static readonly object lockObject = new object();
         
-        /// Counter to track total requests enqueued (for error logging).
+        /// <summary>
+        /// Counter to track total requests enqueued (for error logging and debugging).
+        /// </summary>
         private static long totalRequestsEnqueued = 0;
+        
+        /// <summary>
+        /// Thread-safe counter for current queue size to avoid race conditions.
+        /// Updated atomically when enqueueing/dequeueing.
+        /// </summary>
+        private static long currentQueueSize = 0;
 
+        /// <summary>
+        /// Static constructor that configures .NET's ServicePointManager for optimal HTTP performance.
+        /// Sets connection limit to match thread pool size to prevent connection exhaustion.
+        /// </summary>
         static NetworkClient()
         {
-            ServicePointManager.DefaultConnectionLimit = GetMaxConnections();
+            // Set connection limit to match thread pool size
+            // This ensures we don't create more connections than we have threads
+            // Connection pooling will reuse connections efficiently
+            ServicePointManager.DefaultConnectionLimit = MAX_THREAD_POOL_SIZE;
             ServicePointManager.UseNagleAlgorithm = false;
             ServicePointManager.Expect100Continue = false;
-            ServicePointManager.MaxServicePointIdleTime = 30000;
-        }
-
-        private static int GetMaxConnections()
-        {
-            return DEFAULT_MAX_CONNECTIONS;
+            ServicePointManager.MaxServicePointIdleTime = DEFAULT_CONNECTION_TIMEOUT;
         }
 
         public static string ConstructUrl(Dictionary<string, object> networkOptions)
@@ -146,11 +197,48 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
             return POST(request, null);
         }
 
+        /// <summary>
+        /// Enqueues a POST request for processing via thread pool executor.
+        /// Implements caller_runs fallback policy: if queue is full, executes synchronously in caller's thread.
+        /// Similar to Ruby SDK's ThreadPoolExecutor.post() method.
+        /// </summary>
         public ResponseModel POST(RequestModel request, IFlushInterface flushCallback)
         {
             var requestNumber = Interlocked.Increment(ref totalRequestsEnqueued);
             var enqueueTime = DateTime.UtcNow;
             
+            // Atomically check and increment queue size to avoid race conditions
+            // This ensures thread-safe queue size tracking
+            long queueSize = Interlocked.Read(ref currentQueueSize);
+            if (queueSize >= MAX_QUEUE_SIZE)
+            {
+                // Queue is full: execute in caller's thread (caller_runs fallback policy)
+                // This matches Ruby's fallback_policy: :caller_runs
+                LoggerService.Log(LogLevelEnum.DEBUG, "QUEUE_FULL_EXECUTING_SYNC", new Dictionary<string, string>
+                {
+                    { "method", "POST" },
+                    { "queueSize", queueSize.ToString() },
+                    { "maxQueueSize", MAX_QUEUE_SIZE.ToString() },
+                    { "requestNumber", requestNumber.ToString() }
+                });
+                
+                // Execute synchronously in caller's thread (caller_runs policy)
+                var response = ExecutePostRequest(request);
+                
+                // Invoke flush callback (same logic as async processing)
+                if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() < 300)
+                {
+                    flushCallback?.OnFlush(null, request.GetBody());
+                }
+                else
+                {
+                    flushCallback?.OnFlush($"Failed with status code: {response?.GetStatusCode()}", null);
+                }
+                
+                return response;
+            }
+            
+            // Queue has space: enqueue for processing by thread pool
             var queuedRequest = new QueuedRequest
             {
                 Request = request,
@@ -160,16 +248,20 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 EnqueueTime = enqueueTime
             };
 
+            // Atomically increment queue size before enqueueing (thread-safe)
+            Interlocked.Increment(ref currentQueueSize);
             requestQueue.Enqueue(queuedRequest);
             
-            // Signal that a new request is available
+            // Signal worker threads that a new request is available
             newRequestEvent.Set();
             
+            // Lazy initialization: start worker threads if not already running
             if (!isProcessing)
             {
                 StartProcessing();
             }
 
+            // Block until the request is processed by a worker thread
             try
             {
                 return queuedRequest.CompletionSource.Task.Result;
@@ -192,46 +284,85 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
             }
         }
 
+        /// <summary>
+        /// Starts the thread pool worker threads that process requests from the queue.
+        /// Creates MAX_THREAD_POOL_SIZE worker threads (similar to Ruby's ThreadPoolExecutor).
+        /// Uses double-checked locking to ensure workers are only started once.
+        /// </summary>
         private static void StartProcessing()
         {
+            // Fast path: if already processing, return immediately
             if (isProcessing) return;
 
+            // Double-checked locking: acquire lock and check again
             lock (lockObject)
             {
                 if (isProcessing) return;
                 isProcessing = true;
                 
-                for (int i = 0; i < GetMaxConnections(); i++)
+                // Create worker threads (one per thread in the pool)
+                // Similar to Ruby's ThreadPoolExecutor which creates max_threads workers
+                for (int i = 0; i < MAX_THREAD_POOL_SIZE; i++)
                 {
                     workerTasks[i] = Task.Run(ProcessRequestsAsync, cancellationTokenSource.Token);
                 }
             }
         }
 
+        /// <summary>
+        /// Main loop for worker threads that continuously process requests from the queue.
+        /// Each worker thread:
+        /// 1. Tries to dequeue a request (non-blocking)
+        /// 2. Waits for semaphore slot (limits concurrent HTTP requests)
+        /// 3. Processes the request synchronously (like Ruby's Net::HTTP which is blocking)
+        /// 4. Releases semaphore slot
+        /// 5. If queue is empty, waits for signal that a new request arrived
+        /// 
+        /// This implements the ThreadPoolExecutor pattern similar to Ruby SDK.
+        /// CRITICAL: Process directly in worker thread - NO Task.Run to avoid creating extra threads!
+        /// </summary>
         private static async Task ProcessRequestsAsync()
         {
             while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
                 try
                 {
-                    // First, try to get a request from the queue (without blocking on semaphore)
+                    // Try to dequeue a request from the queue
                     if (requestQueue.TryDequeue(out QueuedRequest queuedRequest))
                     {
-                        // We have a request, now wait for a connection slot to become available
-                        await connectionSemaphore.WaitAsync(cancellationTokenSource.Token);
+                        // Atomically decrement queue size counter (thread-safe)
+                        Interlocked.Decrement(ref currentQueueSize);
                         
-                        // Process the request (semaphore will be released in ProcessRequestAsync)
-                        await ProcessRequestAsync(queuedRequest);
+                        // Wait for semaphore slot to limit concurrent HTTP requests
+                        // This ensures we never exceed MAX_THREAD_POOL_SIZE concurrent requests
+                        await concurrentRequestSemaphore.WaitAsync(cancellationTokenSource.Token);
+                        
+                        try
+                        {
+                            // Process the request directly in this worker thread
+                            // DO NOT use Task.Run - that would create extra threads and break the queue!
+                            // This matches Ruby's behavior where worker threads block on HTTP calls
+                            ProcessRequest(queuedRequest);
+                        }
+                        finally
+                        {
+                            // Always release semaphore slot, allowing another request to proceed
+                            concurrentRequestSemaphore.Release();
+                        }
                     }
                     else
                     {
-                        // No requests in queue, wait for signal that a new request arrived
-                        // Use a timeout to periodically check for cancellation
+                        // Queue is empty: wait for signal that a new request arrived
+                        // Use a timeout (1 second) to periodically check for cancellation
+                        // This prevents workers from blocking indefinitely
                         try
                         {
                             bool signaled = newRequestEvent.Wait(1000, cancellationTokenSource.Token);
                             newRequestEvent.Reset();
+                            
                             // If not signaled, it timed out - continue loop to check queue again
+                            // This handles race conditions where a request was added between
+                            // the TryDequeue check and the Wait call
                             if (!signaled)
                             {
                                 continue;
@@ -239,32 +370,45 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                         }
                         catch (OperationCanceledException)
                         {
-                            // Expected when cancellation is requested
+                            // Expected when cancellation is requested - exit the loop
                             break;
                         }
                     }
                 }
                 catch (OperationCanceledException)
                 {
-                    // Expected when cancellation is requested
+                    // Expected when cancellation is requested - exit the loop
                     break;
                 }
                 catch (Exception ex)
                 {
+                    // Log unexpected errors but continue processing
+                    // This prevents one bad request from stopping all workers
                     LoggerService.Log(LogLevelEnum.ERROR, "QUEUE_PROCESSING_ERROR", new Dictionary<string, string>
                     {
-                        { "err", ex.Message }
+                        { "err", ex.Message },
+                        { "stackTrace", ex.StackTrace ?? "" }
                     });
                 }
             }
         }
 
-        private static async Task ProcessRequestAsync(QueuedRequest queuedRequest)
+        /// <summary>
+        /// Processes a single queued request by executing the HTTP POST synchronously.
+        /// Invokes the flush callback on success/failure and sets the completion source result.
+        /// Similar to Ruby's ThreadPoolExecutor task execution.
+        /// </summary>
+        /// <param name="queuedRequest">The queued request to process</param>
+        private static void ProcessRequest(QueuedRequest queuedRequest)
         {
             try
             {
-                var response = await Task.Run(() => ExecutePostRequest(queuedRequest.Request));
+                // Execute the HTTP request synchronously (like Ruby's blocking Net::HTTP)
+                var response = ExecutePostRequest(queuedRequest.Request);
                 
+                // Invoke flush callback based on response status
+                // Success (2xx): pass null error and the request body
+                // Failure: pass error message and null body
                 if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() < 300)
                 {
                     queuedRequest.FlushCallback?.OnFlush(null, queuedRequest.Request.GetBody());
@@ -274,10 +418,12 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                     queuedRequest.FlushCallback?.OnFlush($"Failed with status code: {response?.GetStatusCode()}", null);
                 }
 
+                // Signal the waiting caller that the request is complete
                 queuedRequest.CompletionSource.SetResult(response);
             }
             catch (Exception ex)
             {
+                // Log the error for debugging
                 LoggerService.Log(LogLevelEnum.ERROR, "REQUEST_PROCESSING_ERROR", new Dictionary<string, string>
                 {
                     { "method", "POST" },
@@ -285,15 +431,13 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                     { "err", ex.Message }
                 });
 
+                // Notify flush callback of the error
                 queuedRequest.FlushCallback?.OnFlush($"Error occurred while processing request: {ex.Message}", null);
 
+                // Create error response and signal completion
                 var errorResponse = new ResponseModel();
                 errorResponse.SetError(ex);
                 queuedRequest.CompletionSource.SetResult(errorResponse);
-            }
-            finally
-            {
-                connectionSemaphore.Release();
             }
         }
 

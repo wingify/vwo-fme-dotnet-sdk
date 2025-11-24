@@ -38,12 +38,14 @@ namespace VWOFmeSdk.Models.Schemas
                 return false;
             }
 
-            if (settings.AccountId == null)
+            // Validate AccountId - check for null (if nullable) or 0 (if missing from JSON)
+            if (settings.AccountId == null || settings.AccountId == 0)
             {
                 LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_ACCOUNT_ID_MISSING", null);
                 return false;
             }
 
+            // Validate SdkKey - check for null or empty string
             if (string.IsNullOrEmpty(settings.SdkKey))
             {
                 LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SDK_KEY_MISSING", null);
