@@ -30,6 +30,8 @@ using VWOFmeSdk.Interfaces.Batching;
 using Newtonsoft.Json;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
+using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Packages.NetworkLayer.Manager;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Client
 {
@@ -142,49 +144,135 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
         }
 
         /// <summary>
-        /// Makes a GET request to the given URL
+        /// Makes a GET request to the given URL with retry logic
         /// </summary>
         /// <param name="requestModel"></param>
         /// <returns></returns>
         public ResponseModel GET(RequestModel requestModel)
         {
-            ResponseModel responseModel = new ResponseModel();
+            string endpoint = "";
+            string previousError = "";
 
-            try
+            // use retryConfig data from requestModel
+            var retryConfig = NetworkManager.GetInstance().GetRetryConfig();
+            var maxRetries = (int)retryConfig[ConstantsNamespace.Constants.RETRY_MAX_RETRIES];
+            var shouldRetry = (bool)retryConfig[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY];
+
+            // Calculate retry delays: baseDelay * (i === 0 ? 1 : multiplier^i) in seconds, convert to milliseconds
+            var retryDelays = new List<int>();
+            int baseDelay = (int)retryConfig[ConstantsNamespace.Constants.RETRY_INITIAL_DELAY];
+            int multiplier = (int)retryConfig[ConstantsNamespace.Constants.RETRY_BACKOFF_MULTIPLIER];
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                Dictionary<string, object> networkOptions = requestModel.GetOptions();
-                string url = ConstructUrl(networkOptions);
-
-                HttpWebRequest request = WebRequest.CreateHttp(url);
-                request.Method = "GET";
-
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-                using (Stream responseStream = response.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream, Encoding.UTF8))
+                int delayInSeconds = baseDelay * (i == 0 ? 1 : (int)Math.Pow(multiplier, i));
+                retryDelays.Add(delayInSeconds * 1000); // Convert to milliseconds for Thread.Sleep
+            }
+            
+            for (int attempt = 0; attempt <= maxRetries && shouldRetry; attempt++)
+            {
+                ResponseModel responseModel = new ResponseModel();
+                
+                try
                 {
-                    int statusCode = (int)response.StatusCode;
-                    responseModel.SetStatusCode(statusCode);
+                    Dictionary<string, object> networkOptions = requestModel.GetOptions();
+                    string url = ConstructUrl(networkOptions);
+                    
+                    // Extract endpoint for logging
+                    Uri uri = new Uri(url);
+                    endpoint = uri.AbsolutePath;
 
-                    string contentType = response.ContentType;
+                    HttpWebRequest request = WebRequest.CreateHttp(url);
+                    request.Method = "GET";
+                    request.Timeout = DEFAULT_CONNECTION_TIMEOUT;
 
-                    if (statusCode != 200 || !contentType.Contains("application/json"))
+                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                    using (Stream responseStream = response.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(responseStream, Encoding.UTF8))
                     {
+                        int statusCode = (int)response.StatusCode;
+                        responseModel.SetStatusCode(statusCode);
+
+                        // Do NOT retry on 400 (Bad Request)
+                        if (statusCode == 400)
+                        {
+                            LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                            {
+                                { "method", "GET" },
+                                { "err", "GET request failed with 400 (Bad Request). No retries." }
+                            });
+                            return responseModel;
+                        }
+
+                        string contentType = response.ContentType;
+
+                        if (statusCode >= 200 && statusCode < 300 && contentType.Contains("application/json"))
+                        {
+                            string responseData = reader.ReadToEnd();
+                            responseModel.SetData(responseData);
+                            
+                            // Log success with retries if there were previous failures
+                            if (attempt > 0 && !string.IsNullOrEmpty(previousError))
+                            {
+                                LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
+                                {
+                                    { "extraData", $"GET {endpoint}" },
+                                    { "attempts", attempt.ToString() },
+                                    { "err", previousError }
+                                });
+                            }
+                            
+                            return responseModel;
+                        }
+
                         string error = $"Invalid response. Status Code: {statusCode}, Response: {response.StatusDescription}";
                         responseModel.SetError(new Exception(error));
-                        return responseModel;
                     }
-
-                    string responseData = reader.ReadToEnd();
-                    responseModel.SetData(responseData);
+                }
+                catch (WebException webEx)
+                {
+                    responseModel.SetError(webEx);
+                }
+                catch (Exception exception)
+                {
+                    responseModel.SetError(exception);
                 }
 
-                return responseModel;
+                // Store error message for potential success logging
+                previousError = (responseModel.GetError() as Exception)?.Message ?? "Unknown error";
+
+                // If this is not the last attempt, wait before retrying
+                if (attempt < maxRetries)
+                {
+                    int delay = retryDelays[attempt];
+                    
+                    // Log retry attempt (delay in seconds)
+                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_ATTEMPT", new Dictionary<string, string>
+                    {
+                        { "endPoint", endpoint },
+                        { "err", previousError },
+                        { "delay", (delay / 1000).ToString() },
+                        { "attempt", (attempt + 1).ToString() },
+                        { "maxRetries", maxRetries.ToString() }
+                    });
+
+                    // Wait before retrying (delay is in milliseconds)
+                    Thread.Sleep(delay);
+                }
+                else
+                {
+                    // Last attempt failed, log and return
+                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_FAILED", new Dictionary<string, string>
+                    {
+                        { "endPoint", endpoint },
+                        { "err", previousError }
+                    });
+                    return responseModel;
+                }
             }
-            catch (Exception exception)
-            {
-                responseModel.SetError(exception);
-                return responseModel;
-            }
+            
+            // Should never reach here, but return null if it does
+            return null;
         }
 
         /// <summary>
@@ -443,88 +531,162 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
 
         private static ResponseModel ExecutePostRequest(RequestModel request)
         {
-            ResponseModel responseModel = new ResponseModel();
+            string endpoint = "";
+            string previousError = "";
 
-            try
+            // use retryConfig data from NetworkManager
+            var retryConfig = NetworkManager.GetInstance().GetRetryConfig();
+            var maxRetries = (int)retryConfig[ConstantsNamespace.Constants.RETRY_MAX_RETRIES];
+            var shouldRetry = (bool)retryConfig[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY];
+
+            // Calculate retry delays: baseDelay * (i === 0 ? 1 : multiplier^i) in seconds, convert to milliseconds
+            var retryDelays = new List<int>();
+            int baseDelay = (int)retryConfig[ConstantsNamespace.Constants.RETRY_INITIAL_DELAY];
+            int multiplier = (int)retryConfig[ConstantsNamespace.Constants.RETRY_BACKOFF_MULTIPLIER];
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                Dictionary<string, object> networkOptions = request.GetOptions();
-                string url = ConstructUrl(networkOptions);
+                int delayInSeconds = baseDelay * (i == 0 ? 1 : (int)Math.Pow(multiplier, i));
+                retryDelays.Add(delayInSeconds * 1000); // Convert to milliseconds for Thread.Sleep
+            }
+            
+            for (int attempt = 0; attempt <= maxRetries && shouldRetry; attempt++)
+            {
+                ResponseModel responseModel = new ResponseModel();
 
-                HttpWebRequest connection = WebRequest.CreateHttp(url);
-                connection.Method = "POST";
-                connection.Accept = "application/json";
-                connection.Timeout = DEFAULT_CONNECTION_TIMEOUT;
-
-                if (networkOptions.ContainsKey("headers"))
+                try
                 {
-                    Dictionary<string, string> headers = (Dictionary<string, string>)networkOptions["headers"];
-                    foreach (KeyValuePair<string, string> header in headers)
+                    Dictionary<string, object> networkOptions = request.GetOptions();
+                    string url = ConstructUrl(networkOptions);
+                    
+                    // Extract endpoint for logging
+                    Uri uri = new Uri(url);
+                    endpoint = uri.AbsolutePath;
+
+                    HttpWebRequest connection = WebRequest.CreateHttp(url);
+                    connection.Method = "POST";
+                    connection.Accept = "application/json";
+                    connection.Timeout = DEFAULT_CONNECTION_TIMEOUT;
+
+                    if (networkOptions.ContainsKey("headers"))
                     {
-                        connection.Headers.Add(header.Key, header.Value);
+                        Dictionary<string, string> headers = (Dictionary<string, string>)networkOptions["headers"];
+                        foreach (KeyValuePair<string, string> header in headers)
+                        {
+                            connection.Headers.Add(header.Key, header.Value);
+                        }
                     }
-                }
 
-                using (StreamWriter streamWriter = new StreamWriter(connection.GetRequestStream()))
-                {
-                    object body = networkOptions["body"];
-                    string jsonBody = JsonConvert.SerializeObject(body);
-                    streamWriter.Write(jsonBody);
-                }
-
-                using (HttpWebResponse httpResponse = (HttpWebResponse)connection.GetResponse())
-                using (Stream responseStream = httpResponse.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream, Encoding.UTF8))
-                {
-                    int statusCode = (int)httpResponse.StatusCode;
-                    responseModel.SetStatusCode(statusCode);
-
-                    string responseData = reader.ReadToEnd();
-                    responseModel.SetData(responseData);
-
-                    if (statusCode != 200)
+                    using (StreamWriter streamWriter = new StreamWriter(connection.GetRequestStream()))
                     {
+                        object body = networkOptions["body"];
+                        string jsonBody = JsonConvert.SerializeObject(body);
+                        streamWriter.Write(jsonBody);
+                    }
+
+                    using (HttpWebResponse httpResponse = (HttpWebResponse)connection.GetResponse())
+                    using (Stream responseStream = httpResponse.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(responseStream, Encoding.UTF8))
+                    {
+                        int statusCode = (int)httpResponse.StatusCode;
+                        responseModel.SetStatusCode(statusCode);
+
+                        // Do NOT retry on 400 (Bad Request)
+                        if (statusCode == 400)
+                        {
+                            LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                            {
+                                { "method", "POST" },
+                                { "err", "POST request failed with 400 (Bad Request). No retries." }
+                            });
+                            return responseModel;
+                        }
+
+                        string responseData = reader.ReadToEnd();
+                        responseModel.SetData(responseData);
+
+                        if (statusCode >= 200 && statusCode < 300)
+                        {
+                            // Log success with retries if there were previous failures
+                            if (attempt > 0 && !string.IsNullOrEmpty(previousError))
+                            {
+                                LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
+                                {
+                                    { "extraData", $"POST {endpoint}" },
+                                    { "attempts", attempt.ToString() },
+                                    { "err", previousError }
+                                });
+                            }
+                            
+                            return responseModel;
+                        }
+
                         string error = $"Request failed. Status Code: {statusCode}, Response: {responseData}";
                         responseModel.SetError(new Exception(error));
                     }
                 }
-
-                return responseModel;
-            }
-            catch (WebException webEx)
-            {
-                string responseText = "";
-                try
+                catch (WebException webEx)
                 {
-                    if (webEx.Response != null)
+                    string responseText = "";
+                    try
                     {
-                        using (var responseStream = webEx.Response.GetResponseStream())
-                        using (var reader = new StreamReader(responseStream))
+                        if (webEx.Response != null)
                         {
-                            responseText = reader.ReadToEnd();
+                            using (var responseStream = webEx.Response.GetResponseStream())
+                            using (var reader = new StreamReader(responseStream))
+                            {
+                                responseText = reader.ReadToEnd();
+                            }
                         }
                     }
+                    catch { }
+                    responseModel.SetError(webEx);
                 }
-                catch { }
+                catch (Exception exception)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                    {
+                        { "method", "POST" },
+                        { "err", exception.Message }
+                    });
+                    responseModel.SetError(exception);
+                }
 
-                LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                // Store error message for potential success logging
+                previousError = (responseModel.GetError() as Exception)?.Message ?? "Unknown error";
+
+                // If this is not the last attempt, wait before retrying
+                if (attempt < maxRetries)
                 {
-                    { "method", "POST" },
-                    { "err", webEx.Message },
-                    { "response", responseText }
-                });
-                responseModel.SetError(webEx);
-                return responseModel;
-            }
-            catch (Exception exception)
-            {
-                LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
+                    int delay = retryDelays[attempt];
+                    
+                    // Log retry attempt (delay in seconds)
+                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_ATTEMPT", new Dictionary<string, string>
+                    {
+                        { "endPoint", endpoint },
+                        { "err", previousError },
+                        { "delay", (delay / 1000).ToString() },
+                        { "attempt", (attempt + 1).ToString() },
+                        { "maxRetries", maxRetries.ToString() }
+                    });
+
+                    // Wait before retrying (delay is in milliseconds)
+                    Thread.Sleep(delay);
+                }
+                else
                 {
-                    { "method", "POST" },
-                    { "err", exception.Message }
-                });
-                responseModel.SetError(exception);
-                return responseModel;
+                    // Last attempt failed, log and return
+                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_FAILED", new Dictionary<string, string>
+                    {
+                        { "endPoint", endpoint },
+                        { "err", previousError }
+                    });
+                    return responseModel;
+                }
             }
+            
+            // Should never reach here, but return null if it does
+            return null;
         }
     }
 

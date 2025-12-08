@@ -243,6 +243,51 @@ var vwoInitOptions = new VWOInitOptions
 
 Refer to the [Gateway Documentation](https://developers.vwo.com/v2/docs/gateway-service) for further details.
 
+### Retry Config
+
+The `RetryConfig` parameter allows you to customize the retry behavior for network requests. This is particularly useful for applications that need to handle network failures gracefully with an exponential backoff strategy.
+
+| **Parameter**       | **Description**                                           | **Required** | **Type** | **Default** | **Validation**                      |
+| ------------------- | --------------------------------------------------------- | ------------ | -------- | ----------- | ----------------------------------- |
+| `shouldRetry`       | Whether to enable automatic retry on network failures     | No           | `bool`   | `true`      | Must be a boolean value             |
+| `maxRetries`        | Maximum number of retry attempts before giving up         | No           | `int`    | `3`         | Must be a non-negative integer >= 1 |
+| `initialDelay`      | Initial delay (in seconds) before the first retry attempt | No           | `int`    | `2`         | Must be a non-negative integer >= 1 |
+| `backoffMultiplier` | Multiplier for exponential backoff between retry attempts | No           | `int`    | `2`         | Must be a non-negative integer >= 2 |
+
+#### How Retry Logic Works
+
+The SDK implements an exponential backoff strategy for retrying failed network requests:
+
+1. **Initial Request**: The SDK attempts the initial network request.
+2. **On Failure**: If the request fails and `shouldRetry` is `true`, the SDK waits for `initialDelay` seconds.
+3. **Exponential Backoff**: For subsequent retries, the delay is calculated as: `initialDelay × (backoffMultiplier ^ attempt)`.
+4. **Maximum Attempts**: The SDK will retry up to `maxRetries` times before giving up.
+
+#### Example Usage
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var retryConfig = new Dictionary<string, object>
+{
+    { "shouldRetry", true },   // Enable retries (default: true)
+    { "maxRetries", 5 },       // Retry up to 5 times
+    { "initialDelay", 3 },     // Wait 3 seconds before first retry
+    { "backoffMultiplier", 2 } // Double the delay for each subsequent retry
+};
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "32-alpha-numeric-sdk-key", // Replace with your SDK key
+    AccountId = 123456,                  // Replace with your account ID
+    RetryConfig = retryConfig
+};
+
+var vwoClient = VWO.Init(vwoInitOptions);
+```
+
+
 ### Storage
 
 The SDK operates in a stateless mode by default, meaning each `getFlag` call triggers a fresh evaluation of the flag against the current user context.

@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using System.Text;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Models
 {
@@ -34,8 +35,9 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
         private int timeout;
         private Dictionary<string, object> body;
         private Dictionary<string, string> headers;
+        private Dictionary<string, object> retryConfig;
 
-        public RequestModel(string url, string method, string path, Dictionary<string, string> query, Dictionary<string, object> body, Dictionary<string, string> headers, string scheme, int port)
+        public RequestModel(string url, string method, string path, Dictionary<string, string> query, Dictionary<string, object> body, Dictionary<string, string> headers, string scheme, int port, Dictionary<string, object> retryConfig = null)
         {
             this.url = url;
             this.method = method ?? "GET";
@@ -44,6 +46,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
             this.body = body;
             this.headers = headers;
             this.scheme = scheme ?? "http";
+            this.retryConfig = retryConfig ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG;
 
             if (port != 0)
             {
@@ -131,6 +134,16 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
             this.port = port;
         }
 
+        public Dictionary<string, object> GetRetryConfig()
+        {
+            return retryConfig;
+        }
+
+        public void SetRetryConfig(Dictionary<string, object> retryConfig)
+        {
+            this.retryConfig = retryConfig ?? new Dictionary<string, object>();
+        }
+
         public Dictionary<string, object> GetOptions()
         {
             var queryParams = new StringBuilder();
@@ -190,6 +203,11 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
             if (timeout > 0)
             {
                 options["timeout"] = timeout;
+            }
+
+            if (retryConfig != null)
+            {
+                options["retryConfig"] = retryConfig;
             }
 
             return options;

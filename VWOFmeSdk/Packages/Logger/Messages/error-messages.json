@@ -19,7 +19,8 @@
   "API_INVALID_PARAM": "Key:{key} passed to API:{apiName} is not of valid type. Got type:{type}, should be:{correctType}",
   "API_SETTING_INVALID": "Settings are not valid. Contact VWO Support",
   "API_CONTEXT_INVALID": "Context should be an object and must contain a mandatory key - id, which is User ID",
-
+  
+  "INVALID_RETRY_CONFIG": "Retry config is invalid. Should be of type:object",
   "FEATURE_NOT_FOUND": "Feature not found for the key:{featureKey}",
   "EVENT_NOT_FOUND": "Event:{eventName} not found in any of the features' metrics",
 
@@ -29,7 +30,9 @@
   "GATEWAY_URL_ERROR": "Please provide a valid URL for VWO Gateway Service while initializing the SDK",
 
   "NETWORK_CALL_FAILED": "Error occurred while sending {method} request.",
+  "NETWORK_CALL_RETRY_FAILED": "Max retries reached. Request failed for {endPoint}, Error: {err}",
 
   "USER_ID_NULL_OR_EMPTY": "User ID passed cannot be null or empty",
-  "SDK_INIT_EVENT_FAILED": "Error occurred while sending SDK init event. Error:{err}"
+  "SDK_INIT_EVENT_FAILED": "Error occurred while sending SDK init event. Error:{err}",
+  "NETWORK_CALL_RETRY_ATTEMPT": "Request failed for {endPoint}, Error: {err}. Retrying in {delay} seconds, attempt {attempt} of {maxRetries}"
 }
