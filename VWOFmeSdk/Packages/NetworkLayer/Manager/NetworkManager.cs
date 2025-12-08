@@ -27,6 +27,8 @@ using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Interfaces.Batching;
 using VWOFmeSdk.Utils;
+using Newtonsoft.Json;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 {
@@ -37,10 +39,13 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         private GlobalRequestModel config;
         private NetworkClientInterface client;
         private TaskFactory executorService;
+        private Dictionary<string, object> retryConfig = ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG;
 
         private NetworkManager()
         {
             this.executorService = new TaskFactory(TaskScheduler.Default);
+            this.retryConfig = ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG;
+            this.config = new GlobalRequestModel(null, null, null, null);
         }
 
         public static NetworkManager GetInstance()
@@ -58,16 +63,20 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
             return instance;
         }
 
-        public void AttachClient(NetworkClientInterface client)
+        public void AttachClient(NetworkClientInterface client = null, Dictionary<string, object> retryConfig = null)
         {
-            this.client = client;
-            this.config = new GlobalRequestModel(null, null, null, null); // Initialize with default config
+            this.config = new GlobalRequestModel(null, null, null, null);
+            
+            // Normalize retry config from parameter (if any)
+            Dictionary<string, object> providedRetry = retryConfig ?? new Dictionary<string, object>();
+            this.retryConfig = ValidateRetryConfig(providedRetry);
+            
+            this.client = client ?? new NetworkClient();
         }
 
         public void AttachClient()
         {
-            this.client = new NetworkClient();
-            this.config = new GlobalRequestModel(null, null, null, null); // Initialize with default config
+            AttachClient(null, null);
         }
 
         public void SetConfig(GlobalRequestModel config)
@@ -162,6 +171,96 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                     });
                 }
             });
+        }
+
+        public Dictionary<string, object> GetRetryConfig()
+        {
+            return retryConfig;
+        }
+
+        private Dictionary<string, object> ValidateRetryConfig(Dictionary<string, object> retryConfig)
+        {
+            Dictionary<string, object> validatedConfig = new Dictionary<string, object>(ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG);
+            bool isInvalidConfig = false;
+
+            if (retryConfig == null || retryConfig.Count == 0)
+            {
+                return validatedConfig;
+            }
+
+            if (retryConfig.ContainsKey(ConstantsNamespace.Constants.RETRY_SHOULD_RETRY))
+            {
+                object shouldRetryValue = retryConfig[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY];
+                if (shouldRetryValue is bool)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY] = shouldRetryValue;
+                }
+                else
+                {
+                    isInvalidConfig = true;
+                }
+            }
+
+            if (retryConfig.ContainsKey(ConstantsNamespace.Constants.RETRY_MAX_RETRIES))
+            {
+                object maxRetriesValue = retryConfig[ConstantsNamespace.Constants.RETRY_MAX_RETRIES];
+                if (maxRetriesValue is int maxRetriesInt && maxRetriesInt >= 1)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_MAX_RETRIES] = maxRetriesInt;
+                }
+                else if (maxRetriesValue is long maxRetriesLong && maxRetriesLong >= 1 && maxRetriesLong <= int.MaxValue)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_MAX_RETRIES] = (int)maxRetriesLong;
+                }
+                else
+                {
+                    isInvalidConfig = true;
+                }
+            }
+
+            if (retryConfig.ContainsKey(ConstantsNamespace.Constants.RETRY_INITIAL_DELAY))
+            {
+                object initialDelayValue = retryConfig[ConstantsNamespace.Constants.RETRY_INITIAL_DELAY];
+                if (initialDelayValue is int initialDelayInt && initialDelayInt >= 1)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_INITIAL_DELAY] = initialDelayInt;
+                }
+                else if (initialDelayValue is long initialDelayLong && initialDelayLong >= 1 && initialDelayLong <= int.MaxValue)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_INITIAL_DELAY] = (int)initialDelayLong;
+                }
+                else
+                {
+                    isInvalidConfig = true;
+                }
+            }
+
+            if (retryConfig.ContainsKey(ConstantsNamespace.Constants.RETRY_BACKOFF_MULTIPLIER))
+            {
+                object backoffMultiplierValue = retryConfig[ConstantsNamespace.Constants.RETRY_BACKOFF_MULTIPLIER];
+                if (backoffMultiplierValue is int backoffMultiplierInt && backoffMultiplierInt >= 2)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_BACKOFF_MULTIPLIER] = backoffMultiplierInt;
+                }
+                else if (backoffMultiplierValue is long backoffMultiplierLong && backoffMultiplierLong >= 2 && backoffMultiplierLong <= int.MaxValue)
+                {
+                    validatedConfig[ConstantsNamespace.Constants.RETRY_BACKOFF_MULTIPLIER] = (int)backoffMultiplierLong;
+                }
+                else
+                {
+                    isInvalidConfig = true;
+                }
+            }
+
+            if (isInvalidConfig)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "INVALID_RETRY_CONFIG", new Dictionary<string, string>
+                {
+                    { "retryConfig", JsonConvert.SerializeObject(retryConfig) }
+                });
+            }
+
+            return validatedConfig;
         }
     }
 }

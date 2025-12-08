@@ -22,6 +22,7 @@ using VWOFmeSdk.Interfaces.Networking;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators;
 using VWOFmeSdk.Packages.Storage;
 using VWOFmeSdk.Models;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 namespace VWOFmeSdk.Models.User
 {
     public class VWOInitOptions
@@ -39,6 +40,13 @@ namespace VWOFmeSdk.Models.User
         private BatchEventData batchEventData;
         private bool isUsageStatsDisabled;
         private Dictionary<string, object> vwoMetaData = new Dictionary<string, object>();
+        private Dictionary<string, object> retryConfig;
+
+        public Dictionary<string, object> RetryConfig
+        {
+            get { return retryConfig; }
+            set { retryConfig = value ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG; }
+        }
 
         private string settings;
 

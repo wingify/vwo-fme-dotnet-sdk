@@ -17,6 +17,7 @@
 #pragma warning restore 1587
 
 using System;
+using System.Collections.Generic;
 
 namespace VWOFmeSdk.Constants
 {
@@ -47,5 +48,22 @@ namespace VWOFmeSdk.Constants
         
         public const string VWO_META_MEG_KEY = "_vwo_meta_meg_";
         public const string FME = "fme";
+
+        // Network retry constants
+        public const int MAX_RETRIES = 3;
+        // Retry configuration keys
+        public const string RETRY_SHOULD_RETRY = "shouldRetry";
+        public const string RETRY_MAX_RETRIES = "maxRetries";
+        public const string RETRY_INITIAL_DELAY = "initialDelay";
+        public const string RETRY_BACKOFF_MULTIPLIER = "backoffMultiplier";
+
+        // Retry configuration defaults
+        public static readonly Dictionary<string, object> DEFAULT_RETRY_CONFIG = new Dictionary<string, object>()
+        {
+            { RETRY_SHOULD_RETRY, true },
+            { RETRY_MAX_RETRIES, 3 },
+            { RETRY_INITIAL_DELAY, 2 },
+            { RETRY_BACKOFF_MULTIPLIER, 2 }
+        };
     }
 }

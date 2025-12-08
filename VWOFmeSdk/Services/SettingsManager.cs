@@ -166,6 +166,7 @@ namespace VWOFmeSdk.Services
             Dictionary<string, string> options = NetworkUtil.GetSettingsPath(sdkKey, accountId.Value);
             options.Add("api-version", "3");
 
+            Dictionary<string, object> retryConfig = NetworkManager.GetInstance().GetRetryConfig();
             if (!networkInstance.GetConfig().GetDevelopmentMode())
             {
                 options.Add("s", "prod");
@@ -177,7 +178,7 @@ namespace VWOFmeSdk.Services
 
             try
             {
-                RequestModel request = new RequestModel(hostname, "GET", path, options, null, null, this.protocol, port);
+                RequestModel request = new RequestModel(hostname, "GET", path, options, null, null, this.protocol, port, retryConfig);
                 request.SetTimeout(networkTimeout);
 
                 // start timer for settings fetch

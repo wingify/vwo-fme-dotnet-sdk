@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.13.1</Version>
+    <Version>1.14.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -14,7 +14,8 @@
     <Description>VWO Feature Management and Experimentation SDK for .Net</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591;1587;0105;0108;0168;0472;4014;1998;0414;SYSLIB0014</NoWarn>
     <IsPackable>true</IsPackable>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/wingify/vwo-fme-dotnet-sdk/</RepositoryUrl>
@@ -144,15 +145,10 @@
     <PackageReference Include="Identifiable" Version="4.0.0" />
     <PackageReference Include="murmurhash" Version="1.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.2">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Text.Json" Version="8.0.3" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
   <ItemGroup>

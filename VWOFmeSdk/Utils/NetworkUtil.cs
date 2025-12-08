@@ -341,9 +341,9 @@ namespace VWOFmeSdk.Utils
         {
             try
             {
-                NetworkManager.GetInstance().AttachClient();
+                NetworkManager.GetInstance().AttachClient(null,NetworkManager.GetInstance().GetRetryConfig());
                 var headers = CreateHeaders(userAgent, ipAddress);
-                var request = new RequestModel(UrlService.GetBaseUrl(), "POST", UrlEnum.EVENTS.GetUrl(), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port);
+                var request = new RequestModel(UrlService.GetBaseUrl(), "POST", UrlEnum.EVENTS.GetUrl(), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port, NetworkManager.GetInstance().GetRetryConfig());
                 NetworkManager.GetInstance().PostAsync(request);
             }
             catch (Exception exception)
@@ -393,7 +393,8 @@ namespace VWOFmeSdk.Utils
                         { "Content-Type", "application/json" }
                     },
                     ConstantsNamespace.Constants.HTTPS_PROTOCOL,
-                    SettingsManager.GetInstance().Port
+                    SettingsManager.GetInstance().Port,
+                    NetworkManager.GetInstance().GetRetryConfig()
                 );
 
                 // Send the request using the enhanced Post method with queue system
@@ -571,10 +572,15 @@ namespace VWOFmeSdk.Utils
         /// <returns></returns>
         public static object SendEvent(Dictionary<string, string> properties, Dictionary<string, object> payload, string eventName)
         {
-            NetworkManager.GetInstance().AttachClient(); // Use enhanced concurrent connections
+            NetworkManager.GetInstance().AttachClient(null, NetworkManager.GetInstance().GetRetryConfig()); // Use enhanced concurrent connections
             var baseUrl = UrlService.GetBaseUrl();
             var port = SettingsManager.GetInstance().Port;
             var protocol = SettingsManager.GetInstance().Protocol;
+
+            if(eventName == EventEnum.VWO_ERROR.GetValue())
+            {
+                NetworkManager.GetInstance().GetRetryConfig()[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY] = false;
+            }
 
             if(eventName == EventEnum.VWO_ERROR.GetValue() || eventName == EventEnum.VWO_USAGE_STATS_EVENT.GetValue())
             {
@@ -583,6 +589,8 @@ namespace VWOFmeSdk.Utils
                 port = 443;
             }
 
+            //print RetryConfig in string format
+            var retryConfig = NetworkManager.GetInstance().GetRetryConfig();
             try
             {
                 // Prepare the request model
@@ -594,7 +602,8 @@ namespace VWOFmeSdk.Utils
                     payload,
                     null,
                     protocol,
-                    port
+                    port,
+                    NetworkManager.GetInstance().GetRetryConfig()
                 );            
 
                 NetworkManager.GetInstance().PostAsync(request);

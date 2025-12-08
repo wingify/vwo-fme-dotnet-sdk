@@ -80,11 +80,11 @@ namespace VWOFmeSdk
             NetworkManager networkInstance = NetworkManager.GetInstance();
             if (this.options != null && this.options.NetworkClientInterface != null)
             {
-                networkInstance.AttachClient(this.options.NetworkClientInterface);
+                networkInstance.AttachClient(this.options.NetworkClientInterface, this.options.RetryConfig ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG);
             }
             else
             {
-                networkInstance.AttachClient();
+                networkInstance.AttachClient(null, this.options.RetryConfig ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG    );
             }
             networkInstance.GetConfig().SetDevelopmentMode(false);
             LoggerService.Log(LogLevelEnum.DEBUG, "SERVICE_INITIALIZED", new Dictionary<string, string>

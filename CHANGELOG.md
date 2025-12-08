@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2025-12-08
+
+### Added
+
+- Added retry logic for network requests (GET and POST) with configurable exponential backoff via the `RetryConfig` initialization option.
+- `RetryConfig` supports:
+  - `shouldRetry` (bool): enable/disable automatic retry on failures (default: `true`)
+  - `maxRetries` (int): maximum number of retry attempts (default: `3`)
+  - `initialDelay` (int): initial delay before the first retry in seconds (default: `2`)
+  - `backoffMultiplier` (int): multiplier for exponential backoff between retry attempts (default: `2`)
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var retryConfig = new Dictionary<string, object>
+{
+    { "shouldRetry", true },   // Enable retries (default: true)
+    { "maxRetries", 5 },       // Retry up to 5 times
+    { "initialDelay", 3 },     // Wait 3 seconds before first retry
+    { "backoffMultiplier", 2 } // Double the delay for each subsequent retry
+};
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "YOUR_SDK_KEY",
+    AccountId = YOUR_ACCOUNT_ID,
+    RetryConfig = retryConfig
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+```
+
 ## [1.13.1] - 2025-11-21
 
 ### Changed
