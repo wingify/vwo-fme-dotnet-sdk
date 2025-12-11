@@ -172,6 +172,9 @@ namespace VWOFmeSdk.Services
                 options.Add("s", "prod");
             }
 
+            options.Add("sn", ConstantsNamespace.Constants.SDK_NAME);
+            options.Add("sv", SDKMetaUtil.GetSdkVersion());
+
             string path = isViaWebhook 
                 ? ConstantsNamespace.Constants.WEBHOOK_SETTINGS_ENDPOINT 
                 : ConstantsNamespace.Constants.SETTINGS_ENDPOINT;
