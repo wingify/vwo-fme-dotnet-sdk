@@ -24,7 +24,9 @@ using VWOFmeSdk.Models;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Models.User;
-using Newtonsoft.Json;
+using Newtonsoft.Json;  
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk.Api
 {
@@ -50,16 +52,21 @@ namespace VWOFmeSdk.Api
                 }
                 else
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "EVENT_NOT_FOUND", new Dictionary<string, string>
+                    LogManager.GetInstance().ErrorLog("EVENT_NOT_FOUND", new Dictionary<string, string>
                     {
                         { "eventName", eventName }
-                    });
+                    }, 
+                    new Dictionary<string, object>
+                    {
+                        { "an", ApiEnum.TRACK.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
+                    }
+                    );
                     return false;
                 }
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error in tracking event: {eventName}");
+                LogManager.GetInstance().ErrorLog("ERROR_TRACKING_EVENT", new Dictionary<string, string> { { "eventName", eventName }, { "err", e.Message } }, new Dictionary<string, object> { { "an", ApiEnum.TRACK.GetValue() }, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
                 return false;
             }
         }
@@ -82,7 +89,8 @@ namespace VWOFmeSdk.Api
                 context.Id,
                 eventName,
                 context,
-                eventProperties
+                eventProperties,
+                context.VwoSessionId
             );
 
             var vwoInstance = VWO.GetInstance();

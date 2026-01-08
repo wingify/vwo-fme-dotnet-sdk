@@ -29,11 +29,13 @@ using VWOFmeSdk.Utils;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Utils;
 using System.Linq;
 using Newtonsoft.Json;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
 {
     public class SegmentOperandEvaluator
     {
-        public bool EvaluateCustomVariableDSL(JToken dslOperandValue, Dictionary<string, object> properties)
+        public bool EvaluateCustomVariableDSL(JToken dslOperandValue, Dictionary<string, object> properties, VWOContext context)
         {
             var entry = SegmentUtil.GetKeyValue(dslOperandValue);
             var operandKey = entry.Value.Key;
@@ -49,9 +51,12 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
             {
                 var listIdPattern = new Regex("inlist\\(([^)]+)\\)");
                 var matcher = listIdPattern.Match(operandValue);
-                if (!matcher.Success)
+               if (!matcher.Success)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "Invalid 'inList' operand format");
+                    LogManager.GetInstance().ErrorLog(
+                        "INVALID_ATTRIBUTE_LIST_FORMAT",
+                        new Dictionary<string, string> {},
+                        new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
                     return false;
                 }
                 var listId = matcher.Groups[1].Value;
@@ -63,7 +68,7 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
                     { "listId", listId }
                 };
 
-                var response = GatewayServiceUtil.GetFromGatewayService(queryParamsObj, UrlEnum.ATTRIBUTE_CHECK.GetUrl());
+                var response = GatewayServiceUtil.GetFromGatewayService(queryParamsObj, UrlEnum.ATTRIBUTE_CHECK.GetUrl(), context);
                 if (response == null)
                 {
                     return false;

@@ -23,7 +23,8 @@ using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Enums;
 using VWOFmeSdk.Services;
-using VWOFmeSdk.Packages.Logger.Enums;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 
 namespace VWOFmeSdk.Decorators
@@ -51,22 +52,28 @@ namespace VWOFmeSdk.Decorators
         public Variation SetDataInStorage(Dictionary<string, object> data, StorageService storageService)
         {
             string featureKey = data["featureKey"] as string;
-            string userId = data["userId"].ToString();
+            VWOContext context = data["context"] as VWOContext;
 
             if (string.IsNullOrEmpty(featureKey))
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "STORING_DATA_ERROR", new Dictionary<string, string>
+                LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
                 {
                     { "key", "featureKey" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
                 });
                 return null;
             }
 
-            if (string.IsNullOrEmpty(userId))
+            if (context == null || string.IsNullOrEmpty(context.Id))
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "STORING_DATA_ERROR", new Dictionary<string, string>
+               LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
                 {
-                    { "key", "Context or Context.id" }
+                    { "key", "Context or Context.Id" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId.ToString() }
                 });
                 return null;
             }
@@ -78,18 +85,24 @@ namespace VWOFmeSdk.Decorators
 
             if (!string.IsNullOrEmpty(rolloutKey) && string.IsNullOrEmpty(experimentKey) && rolloutVariationId == null)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "STORING_DATA_ERROR", new Dictionary<string, string>
+                LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
                 {
                     { "key", "Variation:(rolloutKey, experimentKey or rolloutVariationId)" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
                 });
                 return null;
             }
 
             if (!string.IsNullOrEmpty(experimentKey) && experimentVariationId == null)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "STORING_DATA_ERROR", new Dictionary<string, string>
+                LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
                 {
                     { "key", "Variation:(experimentKey or rolloutVariationId)" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
                 });
                 return null;
             }

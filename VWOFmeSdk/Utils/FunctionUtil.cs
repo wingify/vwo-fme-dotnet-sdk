@@ -113,5 +113,27 @@ namespace VWOFmeSdk.Utils
         {
             return settings.Features.Any(feature => feature.Metrics.Any(metric => metric.Identifier == eventName));
         }
+
+         /// <summary>
+        /// Formats error message from exception
+        /// </summary>
+        /// <param name="err">Exception object</param>
+        /// <returns>Formatted error message</returns>
+        public static string GetFormattedErrorMessage(Exception err)
+        {
+            if (err == null)
+            {
+                return "Unknown error";
+            }
+
+            try
+            {
+                return err.Message ?? err.ToString();
+            }
+            catch
+            {
+                return err.ToString();
+            }
+        }
     }
 }

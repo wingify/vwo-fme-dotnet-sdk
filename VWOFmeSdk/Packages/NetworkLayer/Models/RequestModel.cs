@@ -21,6 +21,8 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using System.Text;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Utils;
+using VWOFmeSdk.Services;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Models
 {
@@ -36,6 +38,21 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
         private Dictionary<string, object> body;
         private Dictionary<string, string> headers;
         private Dictionary<string, object> retryConfig;
+        private string eventName; 
+        private string uuid; 
+        private string campaignId; 
+        private Dictionary<string, object> eventProperties; 
+        private string lastError; // Last error message
+        
+        public void SetLastError(Exception lastError)
+        {
+            this.lastError = FunctionUtil.GetFormattedErrorMessage(lastError);
+        }
+
+        public string GetLastError()
+        {
+            return lastError;
+        }
 
         public RequestModel(string url, string method, string path, Dictionary<string, string> query, Dictionary<string, object> body, Dictionary<string, string> headers, string scheme, int port, Dictionary<string, object> retryConfig = null)
         {
@@ -212,5 +229,46 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
 
             return options;
         }
+
+        public string GetEventName()
+        {
+            return eventName;
+        }
+
+        public void SetEventName(string eventName)
+        {
+            this.eventName = eventName;
+        }
+
+        public string GetUuid()
+        {
+            return uuid;
+        }
+
+        public void SetUuid(string uuid)
+        {
+            this.uuid = uuid;
+        }
+
+        public string GetCampaignId()
+        {
+            return campaignId;
+        }
+
+        public void SetCampaignId(string campaignId)
+        {
+            this.campaignId = campaignId;
+        }
+
+        public Dictionary<string, object> GetEventProperties()
+        {
+            return eventProperties;
+        }
+
+        public void SetEventProperties(Dictionary<string, object> eventProperties)
+        {
+            this.eventProperties = eventProperties;
+        }
+        
     }
 }

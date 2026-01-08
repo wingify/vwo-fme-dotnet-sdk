@@ -22,8 +22,13 @@ namespace VWOFmeSdk.Enums
 {
     public enum ApiEnum
     {
+        INIT,
+        ON_INIT,
         GET_FLAG,
-        TRACK
+        TRACK,
+        SET_ATTRIBUTE,
+        FLUSH_EVENTS,
+        BATCH_FLUSH
     }
 
     public static class ApiEnumExtensions
@@ -32,10 +37,20 @@ namespace VWOFmeSdk.Enums
         {
             switch (apiEnum)
             {
+                case ApiEnum.INIT:
+                    return "init";
+                case ApiEnum.ON_INIT:
+                    return "onInit";
                 case ApiEnum.GET_FLAG:
                     return "getFlag";
                 case ApiEnum.TRACK:
-                    return "track";
+                    return "trackEvent";
+                case ApiEnum.SET_ATTRIBUTE:
+                    return "setAttribute";
+                case ApiEnum.FLUSH_EVENTS:
+                    return "flushEvents";
+                case ApiEnum.BATCH_FLUSH:
+                    return "batchFlush";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(apiEnum), apiEnum, null);
             }

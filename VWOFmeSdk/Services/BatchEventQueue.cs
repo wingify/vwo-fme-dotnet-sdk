@@ -26,6 +26,7 @@ using VWOFmeSdk.Packages.Logger.Core;
 using VWOFmeSdk.Constants;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Interfaces.Batching;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk.Services
 {
@@ -103,7 +104,8 @@ namespace VWOFmeSdk.Services
                             }
                             else
                             {
-                                LoggerService.Log(LogLevelEnum.ERROR, "Failed to send batch events. Retrying next time.");
+                                LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
+                                
                                 // Re-enqueue events in case of failure
                                 foreach (var eventItem in eventsToSend)
                                 {
@@ -113,7 +115,7 @@ namespace VWOFmeSdk.Services
                         }
                         catch (Exception ex)
                         {
-                            LoggerService.Log(LogLevelEnum.ERROR, $"Error during batch flush: {ex.Message}");
+                            LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
                             isSentSuccessfully = false;
                         }
                     });
@@ -161,7 +163,7 @@ namespace VWOFmeSdk.Services
                         }
                         else
                         {
-                            LoggerService.Log(LogLevelEnum.ERROR, "Failed to send batch events. Retrying next time.");
+                            LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
                             // Re-enqueue events in case of failure
                             foreach (var eventItem in eventsToSend)
                             {
@@ -172,7 +174,7 @@ namespace VWOFmeSdk.Services
                     }
                     catch (Exception ex)
                     {
-                        LoggerService.Log(LogLevelEnum.ERROR, $"Error sending batch events: {ex.Message}");
+                        LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
                         isSentSuccessfully = false;
                     }
                     finally

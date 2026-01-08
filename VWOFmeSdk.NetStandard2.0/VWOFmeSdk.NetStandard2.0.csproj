@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.14.1</Version>
+    <Version>1.15.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -33,6 +33,7 @@
     <Compile Include="..\VWOFmeSdk\Enums\StatusEnum.cs" Link="Enums\StatusEnum.cs" />
     <Compile Include="..\VWOFmeSdk\Enums\StorageEnum.cs" Link="Enums\StorageEnum.cs" />
     <Compile Include="..\VWOFmeSdk\Enums\UrlEnum.cs" Link="Enums\UrlEnum.cs" />
+    <Compile Include="..\VWOFmeSdk\Enums\DebuggerCategoryEnum.cs" Link="Enums\DebuggerCategoryEnum.cs" />
 
     <!-- Constants -->
     <Compile Include="..\VWOFmeSdk\Constants\Constants.cs" Link="Constants\Constants.cs" />
@@ -127,6 +128,7 @@
     <Compile Include="..\VWOFmeSdk\Utils\UsageStatsUtil.cs" Link="Utils\UsageStatsUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\EventUtil.cs" Link="Utils\EventUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\SettingsJsonConverterUtil.cs" Link="Utils\SettingsJsonConverterUtil.cs" />
+    <Compile Include="..\VWOFmeSdk\Utils\DebuggerServiceUtil.cs" Link="Utils\DebuggerServiceUtil.cs" />
 
     <!-- Main Classes -->
     <Compile Include="..\VWOFmeSdk\VWO.cs" Link="VWO.cs" />

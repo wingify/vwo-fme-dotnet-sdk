@@ -22,6 +22,9 @@ using System.Collections.Generic;
 using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.Storage;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Services
 {
@@ -47,10 +50,7 @@ namespace VWOFmeSdk.Services
             }
             catch (System.Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "STORED_DATA_ERROR", new Dictionary<string, string>
-                {
-                    {"err", e.ToString()}
-                });
+                LogManager.GetInstance().ErrorLog("STORED_DATA_ERROR", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
                 return null;
             }
         }

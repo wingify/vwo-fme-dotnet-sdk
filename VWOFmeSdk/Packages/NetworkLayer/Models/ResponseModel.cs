@@ -26,10 +26,21 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Models
         private object error;
         private Dictionary<string, string> headers;
         private string data;
+        private int totalAttempts;
+
+        public void SetTotalAttempts(int totalAttempts)
+        {
+            this.totalAttempts = totalAttempts;
+        }
 
         public void SetStatusCode(int statusCode)
         {
             this.statusCode = statusCode;
+        }
+
+        public int GetTotalAttempts()
+        {
+            return totalAttempts;
         }
 
         public void SetHeaders(Dictionary<string, string> headers)

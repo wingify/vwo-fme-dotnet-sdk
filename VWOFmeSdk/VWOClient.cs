@@ -28,7 +28,8 @@ using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Models.Schemas;
 using System.Linq;
-
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk
 {
@@ -77,7 +78,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Exception occurred while parsing settings: " + exception.Message);
+                LogManager.GetInstance().ErrorLog("ERROR_PARSING_SETTINGS", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
             }
         }
 
@@ -96,7 +97,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Exception occurred while updating settings: " + exception.Message);
+                LogManager.GetInstance().ErrorLog("ERROR_UPDATING_SETTINGS", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } }, false);
             }
         }
 
@@ -117,12 +118,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_FAILED", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "isViaWebhook", isViaWebhook.ToString() },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("SETTINGS_FETCH_FAILED", new Dictionary<string, string> { { "apiName", apiName }, { "isViaWebhook", isViaWebhook.ToString() }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 return null;
             }
         }
@@ -164,7 +160,7 @@ namespace VWOFmeSdk
 
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false);
                     getFlag.SetIsEnabled(false);
                     return getFlag;
                 }
@@ -173,11 +169,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
                 getFlag.SetIsEnabled(false);
                 return getFlag;
             }
@@ -200,24 +192,19 @@ namespace VWOFmeSdk
                 var hooksManager = new HooksManager(this.options.Integrations);
                 if (!DataTypeUtil.IsString(eventName))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                    {
-                        { "apiName", apiName },
-                        { "key", "eventName" },
-                        { "type", DataTypeUtil.GetType(eventName) },
-                        { "correctType", "String" }
-                    });
+                    LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", "eventName" }, { "type", DataTypeUtil.GetType(eventName) }, { "correctType", "String" } }, new Dictionary<string, object> { { "an", ApiEnum.TRACK.GetValue() } }, false);
                     throw new ArgumentException("TypeError: Event-name should be a string");
                 }
 
                 if (context == null || string.IsNullOrEmpty(context.Id))
                 {
+                    LogManager.GetInstance().ErrorLog("API_CONTEXT_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.TRACK.GetValue() } }, false);
                     throw new ArgumentException("User ID is required");
                 }
 
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.TRACK.GetValue() } }, false);
                     resultMap[eventName] = false;
                     return resultMap;
                 }
@@ -228,11 +215,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.TRACK.GetValue() } });
                 resultMap[eventName] = false;
                 return resultMap;
             }
@@ -277,37 +260,25 @@ namespace VWOFmeSdk
                 LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", apiName } });
                 if (!DataTypeUtil.IsString(attributeKey))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                    {
-                        { "apiName", apiName },
-                        { "key", "attributeKey" },
-                        { "type", DataTypeUtil.GetType(attributeKey) },
-                        { "correctType", "String" }
-                    });
+                    LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", "attributeKey" }, { "type", DataTypeUtil.GetType(attributeKey) }, { "correctType", "String" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                     throw new ArgumentException("TypeError: attributeKey should be a string");
                 }
 
                 if (!DataTypeUtil.IsString(attributeValue))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                    {
-                        { "apiName", apiName },
-                        { "key", "attributeValue" },
-                        { "type", DataTypeUtil.GetType(attributeValue) },
-                        { "correctType", "String" }
-                    });
+                    LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", "attributeValue" }, { "type", DataTypeUtil.GetType(attributeValue) }, { "correctType", "String" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                     throw new ArgumentException("TypeError: attributeValue should be a string");
                 }
 
                 if (context == null || string.IsNullOrEmpty(context.Id))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_CONTEXT_INVALID", new Dictionary<string, string> {});
+                    LogManager.GetInstance().ErrorLog("API_CONTEXT_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                     throw new ArgumentException("Invalid Context");
                 }
 
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                     return;
                 }
 
@@ -315,11 +286,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } });
             }
         }
 
@@ -339,13 +306,7 @@ namespace VWOFmeSdk
                 // Validate input parameters
                 if (attributes == null || attributes.Count == 0)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                    {
-                        { "apiName", apiName },
-                        { "key", "attributes" },
-                        { "type", "a null or empty attributes dictionary"},
-                        { "correctType", "a non-empty dictionary" },
-                    });
+                    LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", "attributes" }, { "type", "a null or empty attributes dictionary" }, { "correctType", "a non-empty dictionary" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                 }
 
 
@@ -358,13 +319,7 @@ namespace VWOFmeSdk
                     // Allow only primitive types: bool, string, int, float, double
                     if (!(value is bool || value is string || value is int || value is float || value is double))
                     {
-                        LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                        {
-                            { "apiName", apiName },
-                            { "key", key },
-                            { "type", value?.GetType().ToString() ?? "null" },
-                            { "correctType", "bool, string, int, float, double" }
-                        });
+                        LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", key }, { "type", value?.GetType().ToString() ?? "null" }, { "correctType", "bool, string, int, float, double" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
 
                         throw new ArgumentException($"Invalid attribute type for key \"{key}\". Expected bool, string, int, float, or double, but got {value?.GetType()}");
                     }
@@ -372,13 +327,7 @@ namespace VWOFmeSdk
                     // Reject arrays and complex objects explicitly
                     if (value is Array || (value is object && !(value is string || value is bool || value is int || value is float || value is double)))
                     {
-                        LoggerService.Log(LogLevelEnum.ERROR, "API_INVALID_PARAM", new Dictionary<string, string>
-                        {
-                            { "apiName", apiName },
-                            { "key", key },
-                            { "type", value?.GetType().ToString() ?? "null" },
-                            { "correctType", "bool, string, int, float, double" }
-                        });
+                        LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", key }, { "type", value?.GetType().ToString() ?? "null" }, { "correctType", "bool, string, int, float, double" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
 
                         throw new ArgumentException($"Invalid attribute value for key \"{key}\". Arrays and complex objects are not supported.");
                     }
@@ -386,13 +335,13 @@ namespace VWOFmeSdk
 
                 if (context == null || string.IsNullOrEmpty(context.Id))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "API_CONTEXT_INVALID", new Dictionary<string, string> {});
+                    LogManager.GetInstance().ErrorLog("API_CONTEXT_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                     throw new ArgumentException("Invalid Context");
                 }
 
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
                     return;
                 }
 
@@ -400,11 +349,7 @@ namespace VWOFmeSdk
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } });
             }
         }
 
@@ -425,17 +370,13 @@ namespace VWOFmeSdk
                 }
                 else
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, " 'Batching is not enabled. Pass batchEvents in the SDK configuration while invoking init API.'");
+                    LogManager.GetInstance().ErrorLog("BATCHING_NOT_ENABLED", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.FLUSH_EVENTS.GetValue() } });
                     return false;
                 }
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
-                {
-                    { "apiName", apiName },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.FLUSH_EVENTS.GetValue() } });
                 return false;
             }
         }

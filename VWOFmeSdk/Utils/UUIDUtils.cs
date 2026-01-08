@@ -24,6 +24,7 @@ namespace VWOFmeSdk.Utils
     public static class UUIDUtils
     {
         private static readonly Guid UrlNamespace = new Guid("6ba7b811-9dad-11d1-80b4-00c04fd430c8"); // The namespace for URLs
+        private static readonly Guid DnsNamespace = new Guid("6ba7b810-9dad-11d1-80b4-00c04fd430c8"); // The namespace for DNS
         private static readonly string VWO_NAMESPACE_URL = "https://vwo.com";
 
         /// <summary>
@@ -46,15 +47,22 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
-        /// This method generates a random UUID.
+        /// This method generates a random UUID based on an API key.
+        /// Generates a namespace based on the API key using DNS namespace,
+        /// then generates a random UUID using the namespace derived from the API key.
         /// </summary>
-        /// <param name="apiKey"></param>
-        /// <returns></returns>
+        /// <param name="apiKey">The API key used to generate a namespace for the UUID.</param>
+        /// <returns>A random UUID string.</returns>
         public static string GetRandomUUID(string apiKey)
         {
-            var namespaceUUID = new Guid("00000000-0000-0000-0000-000000000000");
-            var randomUUID = Guid.NewGuid();
-            return new Guid(namespaceUUID.ToByteArray()).ToString();
+            // Generate a namespace based on the API key using DNS namespace
+            var namespaceGuid = NamedGuid.Compute(NamedGuidAlgorithm.SHA1, DnsNamespace, apiKey);
+            // Generate a random UUID v4
+            var randomUUIDv4 = Guid.NewGuid();
+            // Generate a random UUID using the namespace derived from the API key
+            var randomUUID = NamedGuid.Compute(NamedGuidAlgorithm.SHA1, namespaceGuid, randomUUIDv4.ToString());
+
+            return randomUUID.ToString();
         }
     }
 }

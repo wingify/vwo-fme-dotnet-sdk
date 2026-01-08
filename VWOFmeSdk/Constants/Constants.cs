@@ -65,5 +65,14 @@ namespace VWOFmeSdk.Constants
             { RETRY_INITIAL_DELAY, 2 },
             { RETRY_BACKOFF_MULTIPLIER, 2 }
         };
+
+        // Debugger constants
+        public const string FLAG_DECISION_GIVEN = "FLAG_DECISION_GIVEN";
+        public const string V2_SETTINGS = "v2-settings";
+        public const string POLLING = "polling";
+        public const string BROWSER_STORAGE = "browserStorage";
+        public const string NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES = "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES";
+        public const string NETWORK_CALL_SUCCESS_WITH_RETRIES = "NETWORK_CALL_SUCCESS_WITH_RETRIES";
+        public const string IMPACT_ANALYSIS = "IMPACT_ANALYSIS";
     }
 }

@@ -24,6 +24,7 @@ using Newtonsoft.Json.Linq;
 using VWOFmeSdk.Enums;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Models.User;
+using VWOFmeSdk.Packages.Logger.Core;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Enums;
 using VWOFmeSdk.Services;
@@ -57,7 +58,7 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
                 case SegmentOperatorValueEnum.USER:
                     return new SegmentOperandEvaluator().EvaluateUserDSL(subDsl.ToString(), properties);
                 case SegmentOperatorValueEnum.CUSTOM_VARIABLE:
-                    return new SegmentOperandEvaluator().EvaluateCustomVariableDSL(subDsl, properties); 
+                    return new SegmentOperandEvaluator().EvaluateCustomVariableDSL(subDsl, properties, context); 
                 case SegmentOperatorValueEnum.UA:
                     return new SegmentOperandEvaluator().EvaluateUserAgentDSL(subDsl.ToString(), context);
                 case SegmentOperatorValueEnum.IP:
@@ -155,7 +156,8 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
                     }
                     catch (Exception err)
                     {
-                        LoggerService.Log(LogLevelEnum.ERROR, "Failed to validate User Agent. Error: " + err);
+                        LogManager.GetInstance().ErrorLog("USER_AGENT_VALIDATION_ERROR", new Dictionary<string, string> { { "err", err.Message } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
+
                     }
                 }
 
@@ -259,7 +261,6 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Error in checking feature in user storage. Got error: " + exception);
                 return false;
             }
         }

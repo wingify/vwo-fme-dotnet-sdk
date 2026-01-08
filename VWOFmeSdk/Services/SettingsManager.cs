@@ -28,7 +28,9 @@ using VWOFmeSdk.Packages.NetworkLayer.Manager;
 using VWOFmeSdk.Packages.NetworkLayer.Models;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Models.Schemas;
+using VWOFmeSdk.Enums;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Services;
 
 namespace VWOFmeSdk.Services
 {
@@ -117,7 +119,11 @@ namespace VWOFmeSdk.Services
                 }
                 catch (Exception e)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, $"Error occurred while parsing gateway service URL: {e.Message}");
+                    LogManager.GetInstance().ErrorLog(
+                        "GATEWAY_SERVICE_URL_ERROR",
+                        new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e as Exception) } },
+                        new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } }
+                    );
                     this.hostname = ConstantsNamespace.Constants.HOST_NAME;
                 }
             }
@@ -146,7 +152,12 @@ namespace VWOFmeSdk.Services
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_ERROR", new Dictionary<string, string> { { "err", e.ToString() } });
+                LogManager.GetInstance().ErrorLog(
+                    "ERROR_FETCHING_SETTINGS",
+                    new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e as Exception) } },
+                    new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } },
+                    false
+                );
             }
             return null;
         }
@@ -187,22 +198,59 @@ namespace VWOFmeSdk.Services
                 // start timer for settings fetch
                 var settingsFetchStartTime = DateTime.UtcNow;
                 ResponseModel response = networkInstance.Get(request);
-                if (response.GetStatusCode() != 200)
-                {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_ERROR", new Dictionary<string, string> { { "err", response.GetError().ToString() } });
-                    return null;
-                }
 
                 // stop timer for settings fetch               
                 var settingsFetchTime = (int)(DateTime.UtcNow - settingsFetchStartTime).TotalMilliseconds;
 
-                this.settingsFetchTime = settingsFetchTime;
+                
+                // Handle successful response
+                if (response != null)
+                {
+                    // If attempt is more than 0
+                    if (response.GetTotalAttempts() > 0)
+                    {
+                        var debugEventProps = NetworkUtil.CreateNetworkAndRetryDebugEvent(
+                            response,
+                            null,
+                            ApiEnum.INIT.GetValue(),
+                            path
+                        );
+                        debugEventProps["uuid"] = request.GetUuid();
+                        // send debug event
+                        DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
+                    }
 
+                    return response.GetData();
+                }
+
+                // Create a response model for error handling if response is null
+                if (response == null)
+                {
+                    response = new ResponseModel();
+                    response.SetError(new Exception("Network request failed: response is null"));
+                    response.SetStatusCode(0);
+                    response.SetTotalAttempts(0);
+
+                    var debugEventProps = NetworkUtil.CreateNetworkAndRetryDebugEvent(
+                        response,
+                        null,
+                        ApiEnum.INIT.GetValue(),
+                        path
+                    );
+                    debugEventProps["uuid"] = request.GetUuid();
+                    // send debug event
+                    DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
+                }
                 return response.GetData();
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_ERROR", new Dictionary<string, string> { { "err", e.ToString() } });
+                LogManager.GetInstance().ErrorLog(
+                    "ERROR_FETCHING_SETTINGS",
+                    new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e as Exception) } },
+                    new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } },
+                    false
+                );
                 return null;
             }
         }
@@ -225,7 +273,12 @@ namespace VWOFmeSdk.Services
                     string settings = FetchSettingsAndCacheInStorage();
                     if (settings == null)
                     {
-                        LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                        LogManager.GetInstance().ErrorLog(
+                            "INVALID_SETTINGS_SCHEMA",
+                            new Dictionary<string, string> { },
+                            new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } },
+                            false
+                        );
                         return null;
                     }
 
@@ -238,7 +291,12 @@ namespace VWOFmeSdk.Services
                     }
                     else
                     {
-                        LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                        LogManager.GetInstance().ErrorLog(
+                            "INVALID_SETTINGS_SCHEMA",
+                            new Dictionary<string, string> { },
+                            new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } },
+                            false
+                        );
                         return null;
                     }
                 }

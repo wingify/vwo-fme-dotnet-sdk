@@ -23,6 +23,7 @@ using VWOFmeSdk.Models;
 using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Services;
+using VWOFmeSdk.Packages.Logger.Core;
 using static VWOFmeSdk.Utils.DecisionUtil;
 using static VWOFmeSdk.Utils.ImpressionUtil;
 
@@ -78,7 +79,8 @@ namespace VWOFmeSdk.Utils
                         settings,
                         campaign.Id,
                         whitelistedObject.Id,
-                        context
+                        context,
+                        feature.Key
                     );
                 }
 
@@ -91,7 +93,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Error occurred while evaluating rule: " + exception);
+                LogManager.GetInstance().ErrorLog("ERROR_EVALUATING_RULE", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
                 return new Dictionary<string, object>();
             }
         }

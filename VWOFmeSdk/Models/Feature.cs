@@ -35,6 +35,7 @@ namespace VWOFmeSdk.Models
         private List<Campaign> rulesLinkedCampaign = new List<Campaign>();
         private bool isGatewayServiceRequired = false;
         private List<Variable> variables;
+        private bool isDebuggerEnabled = false;
 
         public string Key
         {
@@ -100,6 +101,12 @@ namespace VWOFmeSdk.Models
         {
             get { return variables; }
             set { variables = value; }
+        }
+
+        public bool IsDebuggerEnabled
+        {
+            get { return isDebuggerEnabled; }
+            set { isDebuggerEnabled = value; }
         }
     }
 }

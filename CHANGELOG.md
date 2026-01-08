@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2025-01-08
+
+### Added
+
+- Enhanced Logging capabilities at VWO by sending `vwo_sdkDebug` event with additional debug properties.
+
 ## [1.14.1] - 2025-12-11
 
 ### Added
@@ -48,7 +54,7 @@ var vwoInstance = VWO.Init(vwoInitOptions);
 
 ### Changed
 
-- Enhanced queue-based network call processing to use a fixed thread pool of 5 threads (reduced from 20) with proper semaphore-based concurrency control. 
+- Enhanced queue-based network call processing to use a fixed thread pool of 5 threads (reduced from 20) with proper semaphore-based concurrency control.
 
 ## [1.13.0] - 2025-11-17
 
@@ -88,7 +94,7 @@ var vwoInstance = VWO.Init(vwoInitOptions);
 
 ## [1.8.2] - 2025-07-22
 
-### Fixed 
+### Fixed
 
 - Fixed: Bugs in polling intervals causing poor thread management
 

@@ -36,6 +36,10 @@ using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Interfaces.Batching;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using VWOFmeSdk.Enums;
+using VWOFmeSdk.Packages.Logger.Core;
 
 namespace VWOFmeSdk.Utils
 {
@@ -87,13 +91,22 @@ namespace VWOFmeSdk.Utils
         /// <param name="isUsageStatsEvent">Whether this is a usage stats event</param>
         /// <param name="usageStatsAccountId">Account ID to use for usage stats events</param>
         /// <returns>EventArchPayload object</returns>
-        public static EventArchPayload GetEventBasePayload(Settings settings, string userId, string eventName, string visitorUserAgent = "", string ipAddress = "", bool isUsageStatsEvent = false, int? usageStatsAccountId = null)
+        public static EventArchPayload GetEventBasePayload(Settings settings, string userId, string eventName, string visitorUserAgent = "", string ipAddress = "", bool isUsageStatsEvent = false, int? usageStatsAccountId = null, bool shouldGenerateUUID = true)
         {
             string accountId = isUsageStatsEvent && usageStatsAccountId.HasValue 
                 ? usageStatsAccountId.Value.ToString() 
                 : SettingsManager.GetInstance().AccountId.ToString();
+
+            string uuid;
+            if (shouldGenerateUUID)
+            {
+                uuid = UUIDUtils.GetUUID(userId.ToString(), accountId.ToString());
+            }
+            else
+            {
+                uuid = userId.ToString();
+            }
             
-            string uuid = UUIDUtils.GetUUID(userId, accountId);
             var eventArchData = new EventArchData
             {
                 MsgId = GenerateMsgId(uuid),
@@ -214,6 +227,11 @@ namespace VWOFmeSdk.Utils
             properties.D.Event.Props.Variation = variationId.ToString(CultureInfo.InvariantCulture);
             properties.D.Event.Props.IsFirst = 1;
             
+            if(context.VwoSessionId != null)
+            {
+                properties.D.SessionId = context.VwoSessionId.Value;
+            }
+            
 
             // Add post-segmentation variables if they exist in custom variables
             if (postSegmentationVariables != null && customVariables != null)
@@ -270,9 +288,13 @@ namespace VWOFmeSdk.Utils
         /// <param name="context"></param>
         /// <param name="eventProperties"></param>
         /// <returns></returns>
-        public static Dictionary<string, object> GetTrackGoalPayloadData(Settings settings, string userId, string eventName, VWOContext context, Dictionary<string, object> eventProperties)
+        public static Dictionary<string, object> GetTrackGoalPayloadData(Settings settings, string userId, string eventName, VWOContext context, Dictionary<string, object> eventProperties, long? sessionId)
         {
             var properties = GetEventBasePayload(settings, userId, eventName, context.UserAgent, context.IpAddress);
+            if (sessionId != null)
+            {
+                properties.D.SessionId = sessionId.Value;
+            }
             properties.D.Event.Props.IsCustomEvent = true;
             AddCustomEventProperties(properties, eventProperties);
 
@@ -309,9 +331,13 @@ namespace VWOFmeSdk.Utils
         /// <param name="attributeKey"></param>
         /// <param name="attributeValue"></param>
         /// <returns></returns>
-        public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, Dictionary<string, dynamic> attributes)
+       public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, Dictionary<string, object> attributes, long? sessionId)
         {
             var properties = GetEventBasePayload(settings, userId, eventName, null, null);
+            if (sessionId != null)
+            {
+                properties.D.SessionId = sessionId.Value;
+            }
             properties.D.Event.Props.IsCustomEvent = true;
 
             foreach (var attribute in attributes)
@@ -337,24 +363,152 @@ namespace VWOFmeSdk.Utils
         /// <param name="payload"></param>
         /// <param name="userAgent"></param>
         /// <param name="ipAddress"></param>
-        public static void SendPostApiRequest(Dictionary<string, string> properties, Dictionary<string, object> payload, string userAgent, string ipAddress)
+        public static void SendPostApiRequest(Dictionary<string, string> properties, Dictionary<string, object> payload, string userAgent, string ipAddress, Dictionary<string, object> campaignInfo = null)
         {
             try
             {
                 NetworkManager.GetInstance().AttachClient(null,NetworkManager.GetInstance().GetRetryConfig());
                 var headers = CreateHeaders(userAgent, ipAddress);
                 var request = new RequestModel(UrlService.GetBaseUrl(), "POST", UrlEnum.EVENTS.GetUrl(), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port, NetworkManager.GetInstance().GetRetryConfig());
-                NetworkManager.GetInstance().PostAsync(request);
+
+                // Derive event name from query properties (en key)
+                string eventName = null;
+                if (properties != null && properties.ContainsKey("en"))
+                {
+                    eventName = properties["en"];
+                    request.SetEventName(eventName);
+                }
+
+                // Derive uuid from payload (d.visId)
+                Dictionary<string, object> dDict = null;
+
+                if (payload != null && payload.TryGetValue("d", out var dObj) && dObj != null)
+                {
+                    try
+                    {
+                        var dJson = dObj.ToString();
+                        using (var doc = System.Text.Json.JsonDocument.Parse(dJson))
+                        {
+                            if (doc.RootElement.TryGetProperty("visId", out var visIdElement))
+                            {
+                                var visId = visIdElement.GetString();
+                                if (!string.IsNullOrEmpty(visId))
+                                {
+                                    request.SetUuid(visId);
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        LoggerService.Log(LogLevelEnum.DEBUG, "UUID_EXTRACTION_FAILED", new Dictionary<string, string> { { "err", "Failed to extract UUID from payload" } });
+                    }
+
+                    // Preserve dDict for later campaignId extraction if possible
+                    if (dObj is Dictionary<string, object> dict)
+                    {
+                        dDict = dict;
+                    }
+                }
+
+                // Determine apiName and extraDataForMessage similar to Node implementation
+                string apiName = null;
+                string extraDataForMessage = null;
+
+                if (eventName == EventEnum.VWO_VARIATION_SHOWN.GetValue())
+                {
+                    apiName = ApiEnum.GET_FLAG.GetValue();
+
+                    if (campaignInfo != null &&
+                        campaignInfo.TryGetValue("campaignType", out var campaignTypeObj) &&
+                        campaignTypeObj != null &&
+                        (campaignTypeObj.ToString() == CampaignTypeEnum.ROLLOUT.GetValue() ||
+                         campaignTypeObj.ToString() == CampaignTypeEnum.PERSONALIZE.GetValue()))
+                    {
+                        extraDataForMessage =
+                            "feature: " + (campaignInfo.ContainsKey("featureKey") ? campaignInfo["featureKey"] : null) +
+                            ", rule: " + (campaignInfo.ContainsKey("variationName") ? campaignInfo["variationName"] : null);
+                    }
+                    else
+                    {
+                        extraDataForMessage =
+                            "feature: " + (campaignInfo != null && campaignInfo.ContainsKey("featureKey") ? campaignInfo["featureKey"] : null) +
+                            ", rule: " + (campaignInfo != null && campaignInfo.ContainsKey("campaignKey") ? campaignInfo["campaignKey"] : null) +
+                            " and variation: " + (campaignInfo != null && campaignInfo.ContainsKey("variationName") ? campaignInfo["variationName"] : null);
+                    }
+
+                    // Set campaignId on request if available in payload
+                    try
+                    {
+                        if (dDict != null &&
+                            dDict.TryGetValue("event", out var eventObj) && eventObj is Dictionary<string, object> eventDict &&
+                            eventDict.TryGetValue("props", out var propsObj) && propsObj is Dictionary<string, object> propsDict &&
+                            propsDict.TryGetValue("id", out var idObj) &&
+                            int.TryParse(idObj?.ToString(), out var campaignId))
+                        {
+                            request.SetCampaignId(campaignId.ToString());
+                        }
+                    }
+                    catch
+                    {
+                        // ignore campaignId extraction failures
+                    }
+                }
+                else if (eventName == EventEnum.VWO_SYNC_VISITOR_PROP.GetValue())
+                {
+                    apiName = ApiEnum.SET_ATTRIBUTE.GetValue();
+                    extraDataForMessage = apiName;
+                }
+                else if (eventName != EventEnum.VWO_DEBUGGER_EVENT.GetValue() &&
+                         eventName != EventEnum.VWO_LOG_EVENT.GetValue() &&
+                         eventName != EventEnum.VWO_SDK_INIT_EVENT.GetValue())
+                {
+                    apiName = ApiEnum.TRACK.GetValue();
+                    extraDataForMessage = "event: " + (eventName ?? string.Empty);
+                }
+
+                // Perform synchronous POST and build debug event with extraData if retries happened
+                var response = NetworkManager.GetInstance().Post(request);
+
+                if (response != null && response.GetTotalAttempts() > 0)
+                {
+                    var debugEventProps = CreateNetworkAndRetryDebugEvent(
+                        response,
+                        payload,
+                        apiName,
+                        extraDataForMessage
+                    );
+                    debugEventProps["uuid"] = request.GetUuid();
+                    DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
+
+                    LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
+                    {
+                        { "extraData", $"POST {UrlService.GetBaseUrl() + UrlEnum.EVENTS.GetUrl()}" },
+                        { "attempts", response.GetTotalAttempts().ToString() },
+                        { "err", FunctionUtil.GetFormattedErrorMessage(response.GetError() as Exception) }
+                    });
+                }
+
+                // Log error if status code is not 2xx (regardless of retries)
+                if (response == null || response.GetStatusCode() < 200 || response.GetStatusCode() > 299)
+                {
+                    var responseModel = new ResponseModel();
+                    responseModel.SetError(new Exception("Network request failed: response is null"));
+                    responseModel.SetStatusCode(0);
+                    //responseModel.SetTotalAttempts(0);
+
+                    var debugEventProps = CreateNetworkAndRetryDebugEvent(responseModel, payload, apiName, extraDataForMessage);
+                    debugEventProps["uuid"] = request.GetUuid();
+                    DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
+                    LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "POST" }, { "err", FunctionUtil.GetFormattedErrorMessage(response?.GetError() as Exception) ?? "No response" } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false);
+                }
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
-                {
-                    { "method", "POST" },
-                    { "err", exception.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "POST" }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false);
             }
         }
+        
 
         /// <summary>
         /// Sends a batch POST request to the VWO server with the specified payload and account details using enhanced queue system.
@@ -403,7 +557,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception ex)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error occurred while sending batch events: {ex.Message}");
+                LogManager.GetInstance().ErrorLog("BATCH_EVENTS_ERROR", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
 
                 // Call flush callback with error
                 flushCallback?.OnFlush(ex.Message, payload);
@@ -564,6 +718,205 @@ namespace VWOFmeSdk.Utils
         }
 
         /// <summary>
+        /// Generates a payload for the debugger event
+        /// </summary>
+        /// <param name="eventProps">The properties for the debugger event</param>
+        /// <returns>Dictionary containing the debugger event payload</returns>
+        public static Dictionary<string, object> GetDebuggerEventPayload(Dictionary<string, object> eventProps = null)
+        {
+            if (eventProps == null)
+            {
+                eventProps = new Dictionary<string, object>();
+            }
+
+            var accountId = SettingsManager.GetInstance().AccountId.ToString();
+            var sdkKey = SettingsManager.GetInstance().SdkKey;
+
+            // Generate uuid if not present
+            string uuid;
+            if (!eventProps.ContainsKey("uuid") || eventProps["uuid"] == null || string.IsNullOrEmpty(eventProps["uuid"].ToString()))
+            {
+                uuid = UUIDUtils.GetUUID(accountId + "_" + sdkKey, accountId);
+                eventProps["uuid"] = uuid;
+            }
+            else
+            {
+                uuid = eventProps["uuid"].ToString();
+            }
+
+            // Create standard event payload; do not generate a new UUID inside
+            var properties = GetEventBasePayload(
+                null,
+                uuid,
+                EventEnum.VWO_DEBUGGER_EVENT.GetValue(),
+                null,
+                null,
+                false,
+                null,
+                false
+            );
+
+            // Reset props to ensure a clean debugger payload container
+            if (properties.D.Event.Props == null)
+            {
+                properties.D.Event.Props = new Props();
+            }
+            if (properties.D.Event.Props.VwoMeta == null)
+            {
+                properties.D.Event.Props.VwoMeta = new Dictionary<string, object>();
+            }
+
+            // Add session id to the event props if not present
+            if (eventProps.ContainsKey("sId") && eventProps["sId"] != null)
+            {
+                if (long.TryParse(eventProps["sId"].ToString(), out var sessionId))
+                {
+                    properties.D.SessionId = sessionId;
+                }
+            }
+            else
+            {
+                // Use the generated sessionId from payload
+                eventProps["sId"] = properties.D.SessionId;
+            }
+
+            // Build vwoMeta object
+            var vwoMeta = new Dictionary<string, object>(eventProps)
+            {
+                ["a"] = SettingsManager.GetInstance().AccountId,
+                ["product"] = ConstantsNamespace.Constants.FME,
+                ["sn"] = ConstantsNamespace.Constants.SDK_NAME,
+                ["sv"] = SDKMetaUtil.GetSdkVersion(),
+                ["eventId"] = UUIDUtils.GetRandomUUID(SettingsManager.GetInstance().SdkKey)
+            };
+
+            properties.D.Event.Props.VwoMeta = vwoMeta;
+
+            return ConvertEventArchPayloadToDictionary(properties);
+        }
+
+        /// <summary>
+        /// Creates network and retry debug event properties
+        /// </summary>
+        /// <param name="response">The response model</param>
+        /// <param name="payload">The payload dictionary (can be null)</param>
+        /// <param name="apiName">The API name</param>
+        /// <param name="extraData">Extra data for the message</param>
+        /// <returns>Dictionary containing debug event properties</returns>
+        public static Dictionary<string, object> CreateNetworkAndRetryDebugEvent(
+            ResponseModel response,
+            object payload,
+            string apiName,
+            string extraData)
+        {
+            try
+            {
+                // Set category, if call got success then category is retry, otherwise network
+                string category = DebuggerCategoryEnum.RETRY.GetValue();
+                string msg_t = ConstantsNamespace.Constants.NETWORK_CALL_SUCCESS_WITH_RETRIES;
+
+                var infoMessages = LoggerService.InfoMessages;
+                string infoTemplate = infoMessages.ContainsKey("NETWORK_CALL_SUCCESS_WITH_RETRIES")
+                    ? infoMessages["NETWORK_CALL_SUCCESS_WITH_RETRIES"]
+                    : "NETWORK_CALL_SUCCESS_WITH_RETRIES";
+
+                string msg = LogMessageUtil.BuildMessage(
+                    infoTemplate,
+                    new Dictionary<string, string>
+                    {
+                        { "extraData", extraData ?? string.Empty },
+                        { "attempts", response.GetTotalAttempts().ToString() },
+                        { "err", FunctionUtil.GetFormattedErrorMessage(response.GetError() as Exception) }
+                    }
+                );
+
+                string lt = LogLevelEnum.INFO.ToString().ToLower();
+
+                if (response.GetStatusCode() != 200)
+                {
+                    category = DebuggerCategoryEnum.NETWORK.GetValue();
+                    msg_t = ConstantsNamespace.Constants.NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES;
+
+                    var errorMessages = LoggerService.ErrorMessages;
+                    string errorTemplate = errorMessages.ContainsKey("NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES")
+                        ? errorMessages["NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES"]
+                        : "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES";
+
+                    msg = LogMessageUtil.BuildMessage(
+                        errorTemplate,
+                        new Dictionary<string, string>
+                        {
+                            { "extraData", extraData ?? string.Empty },
+                            { "attempts", response.GetTotalAttempts().ToString() },
+                            { "err", FunctionUtil.GetFormattedErrorMessage(response.GetError() as Exception) }
+                        }
+                    );
+                    lt = LogLevelEnum.ERROR.ToString().ToLower();
+                }
+
+                var debugEventProps = new Dictionary<string, object>
+                {
+                    { "cg", category },
+                    { "msg_t", msg_t },
+                    { "msg", msg },
+                    { "lt", lt }
+                };
+
+                if (!string.IsNullOrEmpty(apiName))
+                {
+                    debugEventProps["an"] = apiName;
+                }
+
+                // Extract sessionId from payload.d.sessionId
+                if (payload is Dictionary<string, object> payloadDict)
+                {
+                    if (payloadDict.ContainsKey("d") && payloadDict["d"] is Dictionary<string, object> dObj)
+                    {
+                        if (dObj.ContainsKey("sessionId"))
+                        {
+                            debugEventProps["sId"] = dObj["sessionId"];
+                        }
+                        else
+                        {
+                            debugEventProps["sId"] = FunctionUtil.GetCurrentUnixTimestamp();
+                        }
+                    }
+                    else
+                    {
+                        debugEventProps["sId"] = FunctionUtil.GetCurrentUnixTimestamp();
+                    }
+                }
+                else
+                {
+                    debugEventProps["sId"] = FunctionUtil.GetCurrentUnixTimestamp();
+                }
+
+                return debugEventProps;
+            }
+            catch (Exception err)
+            {
+                return new Dictionary<string, object>
+                {
+                    { "cg", DebuggerCategoryEnum.NETWORK.GetValue() },
+                    { "an", apiName },
+                    { "msg_t", "NETWORK_CALL_FAILED" },
+                    { "msg", LogMessageUtil.BuildMessage(
+                        LoggerService.ErrorMessages.ContainsKey("NETWORK_CALL_FAILED")
+                            ? LoggerService.ErrorMessages["NETWORK_CALL_FAILED"]
+                            : "NETWORK_CALL_FAILED",
+                        new Dictionary<string, string>
+                        {
+                            { "method", extraData ?? string.Empty },
+                            { "err", FunctionUtil.GetFormattedErrorMessage(err) }
+                        })
+                    },
+                    { "lt", LogLevelEnum.ERROR.ToString().ToLower() },
+                    { "sId", FunctionUtil.GetCurrentUnixTimestamp() }
+                };
+            }
+        }
+
+        /// <summary>
         /// Sends an event to the VWO server using enhanced queue system
         /// </summary>
         /// <param name="properties"></param>
@@ -576,21 +929,20 @@ namespace VWOFmeSdk.Utils
             var baseUrl = UrlService.GetBaseUrl();
             var port = SettingsManager.GetInstance().Port;
             var protocol = SettingsManager.GetInstance().Protocol;
+            var retryConfig = new Dictionary<string, object>(NetworkManager.GetInstance().GetRetryConfig());
 
-            if(eventName == EventEnum.VWO_ERROR.GetValue())
+            if(eventName == EventEnum.VWO_DEBUGGER_EVENT.GetValue())
             {
-                NetworkManager.GetInstance().GetRetryConfig()[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY] = false;
+                retryConfig[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY] = false;
             }
 
-            if(eventName == EventEnum.VWO_ERROR.GetValue() || eventName == EventEnum.VWO_USAGE_STATS_EVENT.GetValue())
+            if(eventName == EventEnum.VWO_LOG_EVENT.GetValue() || eventName == EventEnum.VWO_USAGE_STATS_EVENT.GetValue() || eventName == EventEnum.VWO_DEBUGGER_EVENT.GetValue())
             {
                 baseUrl = ConstantsNamespace.Constants.HOST_NAME;
                 protocol = ConstantsNamespace.Constants.HTTPS_PROTOCOL;
                 port = 443;
             }
 
-            //print RetryConfig in string format
-            var retryConfig = NetworkManager.GetInstance().GetRetryConfig();
             try
             {
                 // Prepare the request model
@@ -603,7 +955,7 @@ namespace VWOFmeSdk.Utils
                     null,
                     protocol,
                     port,
-                    NetworkManager.GetInstance().GetRetryConfig()
+                    retryConfig
                 );            
 
                 NetworkManager.GetInstance().PostAsync(request);
@@ -613,11 +965,7 @@ namespace VWOFmeSdk.Utils
             catch (Exception ex)
             {
                 // Log error and return false as fallback
-                LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
-                {
-                    { "method", "POST" },
-                    { "err", ex.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "POST" }, { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false );
 
                 return false;
             }

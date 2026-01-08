@@ -31,6 +31,8 @@ using Newtonsoft.Json;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Enums;
+using VWOFmeSdk.Packages.Logger.Core;
 using VWOFmeSdk.Packages.NetworkLayer.Manager;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Client
@@ -196,11 +198,8 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                         // Do NOT retry on 400 (Bad Request)
                         if (statusCode == 400)
                         {
-                            LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
-                            {
-                                { "method", "GET" },
-                                { "err", "GET request failed with 400 (Bad Request). No retries." }
-                            });
+                            LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "GET" }, { "err", "GET request failed with 400 (Bad Request). No retries." } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() }, { "endPoint", endpoint } }, false);
+                            responseModel.SetTotalAttempts(attempt);
                             return responseModel;
                         }
 
@@ -212,14 +211,16 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                             responseModel.SetData(responseData);
                             
                             // Log success with retries if there were previous failures
-                            if (attempt > 0 && !string.IsNullOrEmpty(previousError))
+                            if (attempt > 0 && !string.IsNullOrEmpty(requestModel.GetLastError()))
                             {
                                 LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
                                 {
                                     { "extraData", $"GET {endpoint}" },
                                     { "attempts", attempt.ToString() },
-                                    { "err", previousError }
+                                    { "err", requestModel.GetLastError() }
                                 });
+                                responseModel.SetTotalAttempts(attempt);
+                                responseModel.SetError(requestModel.GetLastError());
                             }
                             
                             return responseModel;
@@ -227,19 +228,31 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
 
                         string error = $"Invalid response. Status Code: {statusCode}, Response: {response.StatusDescription}";
                         responseModel.SetError(new Exception(error));
+                        responseModel.SetTotalAttempts(attempt);
                     }
                 }
                 catch (WebException webEx)
                 {
                     responseModel.SetError(webEx);
+                    responseModel.SetTotalAttempts(attempt);
                 }
                 catch (Exception exception)
                 {
                     responseModel.SetError(exception);
+                    responseModel.SetTotalAttempts(attempt + 1);
                 }
 
                 // Store error message for potential success logging
-                previousError = (responseModel.GetError() as Exception)?.Message ?? "Unknown error";
+                var errorObj = responseModel.GetError();
+                if (errorObj is Exception ex)
+                {
+                    requestModel.SetLastError(ex);
+                }
+                else if (errorObj != null)
+                {
+                    // Wrap non-exception errors so we still get a meaningful message
+                    requestModel.SetLastError(new Exception(errorObj.ToString()));
+                }
 
                 // If this is not the last attempt, wait before retrying
                 if (attempt < maxRetries)
@@ -250,7 +263,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                     LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_ATTEMPT", new Dictionary<string, string>
                     {
                         { "endPoint", endpoint },
-                        { "err", previousError },
+                        { "err", requestModel.GetLastError() },
                         { "delay", (delay / 1000).ToString() },
                         { "attempt", (attempt + 1).ToString() },
                         { "maxRetries", maxRetries.ToString() }
@@ -261,12 +274,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 }
                 else
                 {
-                    // Last attempt failed, log and return
-                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_FAILED", new Dictionary<string, string>
-                    {
-                        { "endPoint", endpoint },
-                        { "err", previousError }
-                    });
+                    LogManager.GetInstance().ErrorLog("NETWORK_CALL_RETRY_FAILED", new Dictionary<string, string> { { "endPoint", endpoint }, { "err", requestModel.GetLastError() } }, new Dictionary<string, object> {}, false);
                     return responseModel;
                 }
             }
@@ -358,12 +366,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
             {
                 if (ex.InnerException is TimeoutException)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "REQUEST_TIMEOUT", new Dictionary<string, string>
-                    {
-                        { "method", "POST" },
-                        { "requestNumber", requestNumber.ToString() },
-                        { "err", "Request timed out after waiting in queue" }
-                    });
+                    LogManager.GetInstance().ErrorLog("REQUEST_TIMEOUT", new Dictionary<string, string> { { "method", "POST" }, { "requestNumber", requestNumber.ToString() }, { "err", "Request timed out after waiting in queue" } });
                     var errorResponse = new ResponseModel();
                     errorResponse.SetError(ex.InnerException);
                     return errorResponse;
@@ -472,11 +475,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 {
                     // Log unexpected errors but continue processing
                     // This prevents one bad request from stopping all workers
-                    LoggerService.Log(LogLevelEnum.ERROR, "QUEUE_PROCESSING_ERROR", new Dictionary<string, string>
-                    {
-                        { "err", ex.Message },
-                        { "stackTrace", ex.StackTrace ?? "" }
-                    });
+                    LogManager.GetInstance().ErrorLog("QUEUE_PROCESSING_ERROR", new Dictionary<string, string> { { "err", ex.Message }, { "stackTrace", ex.StackTrace ?? "" } });
                 }
             }
         }
@@ -512,12 +511,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
             catch (Exception ex)
             {
                 // Log the error for debugging
-                LoggerService.Log(LogLevelEnum.ERROR, "REQUEST_PROCESSING_ERROR", new Dictionary<string, string>
-                {
-                    { "method", "POST" },
-                    { "requestNumber", queuedRequest.RequestNumber.ToString() },
-                    { "err", ex.Message }
-                });
+                LogManager.GetInstance().ErrorLog("REQUEST_PROCESSING_ERROR", new Dictionary<string, string> { { "method", "POST" }, { "requestNumber", queuedRequest.RequestNumber.ToString() }, { "err", ex.Message } });
 
                 // Notify flush callback of the error
                 queuedRequest.FlushCallback?.OnFlush($"Error occurred while processing request: {ex.Message}", null);
@@ -532,7 +526,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
         private static ResponseModel ExecutePostRequest(RequestModel request)
         {
             string endpoint = "";
-            string previousError = "";
 
             // use retryConfig data from NetworkManager
             var retryConfig = NetworkManager.GetInstance().GetRetryConfig();
@@ -550,7 +543,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 retryDelays.Add(delayInSeconds * 1000); // Convert to milliseconds for Thread.Sleep
             }
             
-            for (int attempt = 0; attempt <= maxRetries && shouldRetry; attempt++)
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
                 ResponseModel responseModel = new ResponseModel();
 
@@ -594,11 +587,8 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                         // Do NOT retry on 400 (Bad Request)
                         if (statusCode == 400)
                         {
-                            LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
-                            {
-                                { "method", "POST" },
-                                { "err", "POST request failed with 400 (Bad Request). No retries." }
-                            });
+                            LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "POST" }, { "err", "POST request failed with 400 (Bad Request). No retries." } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() }, { "endPoint", endpoint } }, false);
+                            responseModel.SetTotalAttempts(attempt);
                             return responseModel;
                         }
 
@@ -608,14 +598,16 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                         if (statusCode >= 200 && statusCode < 300)
                         {
                             // Log success with retries if there were previous failures
-                            if (attempt > 0 && !string.IsNullOrEmpty(previousError))
+                            if (attempt > 0 && !string.IsNullOrEmpty(request.GetLastError()))
                             {
                                 LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
                                 {
                                     { "extraData", $"POST {endpoint}" },
                                     { "attempts", attempt.ToString() },
-                                    { "err", previousError }
+                                    { "err", request.GetLastError() }
                                 });
+                                responseModel.SetTotalAttempts(attempt);
+                                responseModel.SetError(request.GetLastError());
                             }
                             
                             return responseModel;
@@ -623,6 +615,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
 
                         string error = $"Request failed. Status Code: {statusCode}, Response: {responseData}";
                         responseModel.SetError(new Exception(error));
+                        responseModel.SetTotalAttempts(attempt);
                     }
                 }
                 catch (WebException webEx)
@@ -641,22 +634,19 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                     }
                     catch { }
                     responseModel.SetError(webEx);
+                    responseModel.SetTotalAttempts(attempt);
                 }
                 catch (Exception exception)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_FAILED", new Dictionary<string, string>
-                    {
-                        { "method", "POST" },
-                        { "err", exception.Message }
-                    });
                     responseModel.SetError(exception);
+                    responseModel.SetTotalAttempts(attempt);
                 }
 
                 // Store error message for potential success logging
-                previousError = (responseModel.GetError() as Exception)?.Message ?? "Unknown error";
+                request.SetLastError((responseModel.GetError() as Exception));
 
                 // If this is not the last attempt, wait before retrying
-                if (attempt < maxRetries)
+                if (attempt < maxRetries && shouldRetry)
                 {
                     int delay = retryDelays[attempt];
                     
@@ -664,7 +654,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                     LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_ATTEMPT", new Dictionary<string, string>
                     {
                         { "endPoint", endpoint },
-                        { "err", previousError },
+                        { "err", request.GetLastError() },
                         { "delay", (delay / 1000).ToString() },
                         { "attempt", (attempt + 1).ToString() },
                         { "maxRetries", maxRetries.ToString() }
@@ -675,12 +665,30 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Client
                 }
                 else
                 {
-                    // Last attempt failed, log and return
-                    LoggerService.Log(LogLevelEnum.ERROR, "NETWORK_CALL_RETRY_FAILED", new Dictionary<string, string>
+                    // Check if this is a debugger event
+                    bool isDebuggerEvent = false;
+                    Dictionary<string, object> networkOptions = request.GetOptions();
+                    if (networkOptions.ContainsKey("path"))
                     {
-                        { "endPoint", endpoint },
-                        { "err", previousError }
-                    });
+                        string path = networkOptions["path"].ToString();
+                        if (path.Contains(EventEnum.VWO_DEBUGGER_EVENT.GetValue()))
+                        {
+                            isDebuggerEvent = true;
+                        }
+                    }
+
+                    // // Only log failure if it's NOT a debugger event
+                    if (!isDebuggerEvent)
+                    {
+                        LogManager.GetInstance().ErrorLog("NETWORK_CALL_RETRY_FAILED", new Dictionary<string, string> 
+                        { 
+                            { "endPoint", endpoint }, 
+                            { "err", request.GetLastError() },
+                            { "attempts", attempt.ToString() }
+                        }, new Dictionary<string, object> {}, false);
+                    }
+                    
+                    responseModel.SetTotalAttempts(attempt);
                     return responseModel;
                 }
             }

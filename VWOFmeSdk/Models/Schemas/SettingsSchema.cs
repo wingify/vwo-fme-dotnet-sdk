@@ -20,6 +20,8 @@ using System.Collections.Generic;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk.Models.Schemas
 {
@@ -41,14 +43,14 @@ namespace VWOFmeSdk.Models.Schemas
             // Validate AccountId - check for null (if nullable) or 0 (if missing from JSON)
             if (settings.AccountId == null || settings.AccountId == 0)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_ACCOUNT_ID_MISSING", null);
+                LogManager.GetInstance().ErrorLog("SETTINGS_ACCOUNT_ID_MISSING", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 return false;
             }
 
             // Validate SdkKey - check for null or empty string
             if (string.IsNullOrEmpty(settings.SdkKey))
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SDK_KEY_MISSING", null);
+                LogManager.GetInstance().ErrorLog("SETTINGS_SDK_KEY_MISSING", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
                 return false;
             }
 

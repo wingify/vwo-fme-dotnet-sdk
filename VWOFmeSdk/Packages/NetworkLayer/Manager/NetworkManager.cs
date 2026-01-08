@@ -29,6 +29,8 @@ using VWOFmeSdk.Interfaces.Batching;
 using VWOFmeSdk.Utils;
 using Newtonsoft.Json;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 {
@@ -111,7 +113,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
             }
             catch (Exception error)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating get request, error");
                 return null;
             }
         }
@@ -135,7 +136,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
             }
             catch (Exception error)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, $"Error when creating post request, error: {error}");
                 if (flushCallback != null)
                 {
                     flushCallback.OnFlush($"Error occurred while sending batch events: {error.Message}", null);
@@ -148,7 +148,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         /// Asynchronously sends a POST request to the server.
         /// </summary>
         /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
-        public void PostAsync(RequestModel request)
+        public ResponseModel PostAsync(RequestModel request, Dictionary<string, string> properties = null, Dictionary<string, object> campaignInfo = null)
         {
             executorService.StartNew(() => 
             {
@@ -162,21 +162,16 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                             UsageStatsUtil.GetInstance().ClearUsageStats();
                         }
                     }
+                    return response;
                 }
                 catch (Exception ex)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "ASYNC_POST_ERROR", new Dictionary<string, string>
-                    {
-                        { "err", ex.Message }
-                    });
+                    return null;
                 }
             });
+            return null;
         }
 
-        public Dictionary<string, object> GetRetryConfig()
-        {
-            return retryConfig;
-        }
 
         private Dictionary<string, object> ValidateRetryConfig(Dictionary<string, object> retryConfig)
         {
@@ -254,13 +249,15 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 
             if (isInvalidConfig)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "INVALID_RETRY_CONFIG", new Dictionary<string, string>
-                {
-                    { "retryConfig", JsonConvert.SerializeObject(retryConfig) }
-                });
+                LogManager.GetInstance().ErrorLog("INVALID_RETRY_CONFIG", new Dictionary<string, string> { { "retryConfig", JsonConvert.SerializeObject(retryConfig) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
             }
 
             return validatedConfig;
+        }
+
+        public Dictionary<string, object> GetRetryConfig()
+        {
+            return retryConfig;
         }
     }
 }

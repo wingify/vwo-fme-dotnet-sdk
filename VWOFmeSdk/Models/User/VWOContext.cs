@@ -16,7 +16,10 @@
  */
 #pragma warning restore 1587
 
+using System;
 using System.Collections.Generic;
+using VWOFmeSdk.Services;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Models.User
 {
@@ -29,12 +32,47 @@ namespace VWOFmeSdk.Models.User
         private Dictionary<string, object> variationTargetingVariables = new Dictionary<string, object>();
         private List<string> postSegmentationVariables = new List<string>();
         private GatewayService _vwo;
-        
+        private string _vwo_uuid;
+        private long? _vwo_sessionId;
 
         public string Id
         {
             get { return id; }
             set { id = value; }
+        }
+
+        public string VwoUuid
+        {
+            get { return _vwo_uuid; }
+            set { _vwo_uuid = value; }
+        }
+
+        public long? VwoSessionId
+        {
+            get { return _vwo_sessionId; }
+            set { _vwo_sessionId = value; }
+        }
+
+        /// <summary>
+        /// Initializes _vwo_uuid and _vwo_sessionId for the current context
+        /// This should be called after setting the Id property
+        /// </summary>
+        public void InitializeVwoIdentifiers()
+        {
+            if (!string.IsNullOrEmpty(id))
+            {
+                try
+                {
+                    _vwo_uuid = UUIDUtils.GetUUID(id, SettingsManager.GetInstance().AccountId.ToString());
+                    _vwo_sessionId = FunctionUtil.GetCurrentUnixTimestamp();
+                }
+                catch (Exception)
+                {
+                    // If SettingsManager is not initialized, use empty values
+                    _vwo_uuid = null;
+                    _vwo_sessionId = null;
+                }
+            }
         }
 
         public string UserAgent
@@ -72,5 +110,27 @@ namespace VWOFmeSdk.Models.User
             get { return _vwo; }
             set { _vwo = value; }
         }
+
+        public string GetUuid()
+        {
+            // Lazy initialization if UUID is not set
+            if (_vwo_uuid == null && !string.IsNullOrEmpty(id))
+            {
+                InitializeVwoIdentifiers();
+            }
+            return _vwo_uuid;
+        }
+
+        public long? GetSessionId()
+        {
+            // Lazy initialization if session ID is not set
+            if (_vwo_sessionId == null && !string.IsNullOrEmpty(id))
+            {
+                InitializeVwoIdentifiers();
+            }
+            return _vwo_sessionId;
+        }
+
+        
     }
 }

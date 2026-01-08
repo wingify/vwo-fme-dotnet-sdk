@@ -56,7 +56,8 @@ namespace VWOFmeSdk.Api
                 settings,
                 context.Id,
                 EventEnum.VWO_SYNC_VISITOR_PROP.GetValue(),
-                attributes
+                attributes,
+                context.VwoSessionId
             );
 
             var vwoInstance = VWO.GetInstance();

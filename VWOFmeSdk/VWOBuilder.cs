@@ -32,6 +32,8 @@ using VWOFmeSdk.Services;
 using VWOFmeSdk.Constants;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Utils;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk
 {
@@ -121,7 +123,7 @@ namespace VWOFmeSdk
 
             if (string.IsNullOrEmpty(settings))
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Settings string is null or empty. Settings will not be set.");
+                LogManager.GetInstance().ErrorLog("SETTINGS_NULL_OR_EMPTY", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 return;
             }
             // Store the original settings as a string
@@ -138,17 +140,13 @@ namespace VWOFmeSdk
                 catch (JsonReaderException jsonEx)
                 {
                     string path = jsonEx.Path ?? "unknown";
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_JSON_PARSE_ERROR", new Dictionary<string, string>
-                    {
-                        { "path", path },
-                        { "error", jsonEx.Message }
-                    });
+                    LogManager.GetInstance().ErrorLog("SETTINGS_JSON_PARSE_ERROR", new Dictionary<string, string> { { "path", path }, { "error", jsonEx.Message } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                     return;
                 }
 
                 if (settingsObject == null)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_SCHEMA_INVALID", null);
+                    LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                     return;
                 }
 
@@ -165,7 +163,7 @@ namespace VWOFmeSdk
             }
             catch (Exception ex)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Error occurred while setting settings manually: " + ex.Message);
+                LogManager.GetInstance().ErrorLog("ERROR_SETTING_SETTINGS_MANUALLY", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
             }
         }
 
@@ -203,10 +201,7 @@ namespace VWOFmeSdk
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SETTINGS_FETCH_ERROR", new Dictionary<string, string>
-                {
-                    { "err", e.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("ERROR_FETCHING_SETTINGS", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 isSettingsFetchInProgress = false;
                 return null;
             }
@@ -291,21 +286,13 @@ namespace VWOFmeSdk
 
             if (this.options.PollInterval != null && !DataTypeUtil.IsInteger(this.options.PollInterval))
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "INIT_OPTIONS_INVALID", new Dictionary<string, string>
-                {
-                    { "key", "pollInterval" },
-                    { "correctType", "number" }
-                });
+                LogManager.GetInstance().ErrorLog("INIT_OPTIONS_INVALID", new Dictionary<string, string> { { "key", "pollInterval" }, { "correctType", "number" } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 return this;
             }
 
             if (this.options.PollInterval != null && this.options.PollInterval < 1000)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "INIT_OPTIONS_INVALID", new Dictionary<string, string>
-                {
-                    { "key", "pollInterval" },
-                    { "correctType", "number" }
-                });
+                LogManager.GetInstance().ErrorLog("INIT_OPTIONS_INVALID", new Dictionary<string, string> { { "key", "pollInterval" }, { "correctType", "number" } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 return this;
             }
 
@@ -343,23 +330,21 @@ namespace VWOFmeSdk
                 // Check data type and values for eventsPerRequest and requestTimeInterval
                 if (!isEventsPerRequestValid && !isRequestTimeIntervalValid)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "Values mismatch from the expectation of both parameters. Batching not initialized.");
+                    LogManager.GetInstance().ErrorLog("INVALID_BATCH_EVENTS_CONFIG", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                     return this;
                 }
 
                 // Handle invalid data types for individual parameters
                 if (!isEventsPerRequestValid)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "Events_per_request values is invalid (should be greater than 0 and less than 5000). Using default value of events_per_request parameter : 100");
+                    LogManager.GetInstance().ErrorLog("INVALID_EVENTS_PER_REQUEST", new Dictionary<string, string> { { "key", "events_per_request" }, { "correctType", "number" } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                     eventsPerRequest = ConstantsNamespace.Constants.DEFAULT_EVENTS_PER_REQUEST; // Use default if invalid
                 }
-
                 if (!isRequestTimeIntervalValid)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "Request_time_interval values is invalid (should be greater than 0). Using default value of request_time_interval parameter : 600");
+                    LogManager.GetInstance().ErrorLog("INVALID_REQUEST_TIME_INTERVAL", new Dictionary<string, string> { { "key", "request_time_interval" }, { "correctType", "number" } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                     requestTimeInterval = ConstantsNamespace.Constants.DEFAULT_REQUEST_TIME_INTERVAL; // Use default if invalid
                 }
-
                 // Initialize BatchEventQueue for batching
                 batchEventQueue = new BatchEventQueue(
                     eventsPerRequest,
@@ -434,10 +419,7 @@ namespace VWOFmeSdk
                 }
                 catch (Exception ex)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "POLLING_FAILED", new Dictionary<string, string>
-                    {
-                        { "err", ex.ToString() }
-                    });
+                    LogManager.GetInstance().ErrorLog("POLLING_FAILED", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 }
             }
         }

@@ -29,6 +29,8 @@ using VWOFmeSdk.Enums;
 using VWOFmeSdk.Decorators;
 using static VWOFmeSdk.Utils.FunctionUtil;
 using VWOFmeSdk.Utils; // Ensure this namespace is included
+using VWOFmeSdk.Packages.Logger.Core;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 
 namespace VWOFmeSdk.Api
 {
@@ -56,6 +58,16 @@ namespace VWOFmeSdk.Api
                 { "userId", context?.Id },
                 { "api", apiValue }
             };
+
+              // create debug event props
+            Dictionary<string, object> debugEventProps = new Dictionary<string, object>
+            {
+                { "an", ApiEnum.GET_FLAG.GetValue() },
+                { "uuid", context?.GetUuid() },
+                { "fk", feature?.Key },
+                { "sId", context?.GetSessionId() }
+            };
+
 
             StorageService storageService = new StorageService();
             Dictionary<string, object> storedDataMap = new StorageDecorator().GetFeatureFromStorage(featureKey, context, storageService);
@@ -118,16 +130,13 @@ namespace VWOFmeSdk.Api
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Error parsing stored data: " + e.Message);
+                LogManager.GetInstance().ErrorLog("ERROR_PARSING_STORED_DATA", new Dictionary<string, string> { { "err", e.Message } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
             }
 
             // If feature is not found, return false
             if (feature == null)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "FEATURE_NOT_FOUND", new Dictionary<string, string>
-                {
-                    { "featureKey", featureKey }
-                });
+                LogManager.GetInstance().ErrorLog("FEATURE_NOT_FOUND", new Dictionary<string, string> { { "featureKey", featureKey } }, debugEventProps);
                 getFlag.SetIsEnabled(false);
                 return getFlag;
             }
@@ -168,7 +177,7 @@ namespace VWOFmeSdk.Api
                         getFlag.Variables = variation.Variables;
                         shouldCheckForExperimentsRules = true;
                         UpdateIntegrationsDecisionObject(passedRolloutCampaign, variation, passedRulesInformation, decision);
-                        ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, passedRolloutCampaign.Id, variation.Id, context);
+                        ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, passedRolloutCampaign.Id, variation.Id, context, featureKey);
                     }
                 }
             }
@@ -219,7 +228,7 @@ namespace VWOFmeSdk.Api
                         getFlag.SetIsEnabled(true);
                         getFlag.Variables = variation.Variables;
                         UpdateIntegrationsDecisionObject(campaign, variation, passedRulesInformation, decision);
-                        ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, campaign.Id, variation.Id, context);
+                        ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, campaign.Id, variation.Id, context, featureKey);
                     }
                 }
             }
@@ -229,6 +238,7 @@ namespace VWOFmeSdk.Api
                 Dictionary<string, object> storageMap = new Dictionary<string, object>
                 {
                     { "featureKey", feature.Key },
+                    { "context", context },
                     { "userId", context.Id }
                 };
                 foreach (var item in passedRulesInformation)
@@ -241,6 +251,21 @@ namespace VWOFmeSdk.Api
             // Execute the integrations
             hookManager.Set(decision);
             hookManager.Execute(hookManager.Get());
+
+
+            // Send debug event, if debugger is enabled
+            if (feature != null && feature.IsDebuggerEnabled)
+            {
+                debugEventProps["cg"] = DebuggerCategoryEnum.DECISION.GetValue();
+                debugEventProps["lt"] = LogLevelEnum.INFO.ToString().ToLower();
+                debugEventProps["msg_t"] = ConstantsNamespace.Constants.FLAG_DECISION_GIVEN;
+                
+                // Update debug event props with decision keys
+                UpdateDebugEventProps(debugEventProps, decision);
+
+                // Send debug event
+                DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
+            }
 
             // If the feature has an impact campaign, send an impression for the variation shown
             if (feature.ImpactCampaign != null && feature.ImpactCampaign.CampaignId != null && feature.ImpactCampaign.CampaignId != 0)
@@ -255,7 +280,8 @@ namespace VWOFmeSdk.Api
                     settings,
                     (int)feature.ImpactCampaign.CampaignId,
                     getFlag.IsEnabled() ? 2 : 1,
-                    context
+                    context,
+                    featureKey
                 );
             }
             return getFlag;
@@ -278,6 +304,42 @@ namespace VWOFmeSdk.Api
             foreach (var item in passedRulesInformation)
             {
                 decision[item.Key] = item.Value;
+            }
+        }
+
+        /// <summary>
+        /// Update debug event props with decision keys
+        /// </summary>
+        /// <param name="debugEventProps">Debug event props</param>
+        /// <param name="decision">Decision</param>
+        private static void UpdateDebugEventProps(Dictionary<string, object> debugEventProps, Dictionary<string, object> decision)
+        {
+            Dictionary<string, object> decisionKeys = DebuggerServiceUtil.ExtractDecisionKeys(decision);
+            string message = $"Flag decision given for feature:{decision["featureKey"]}.";
+            
+            if (decision.ContainsKey("rolloutKey") && decision["rolloutKey"] != null && 
+                decision.ContainsKey("rolloutVariationId") && decision["rolloutVariationId"] != null)
+            {
+                string rolloutKey = decision["rolloutKey"].ToString();
+                string featureKey = decision["featureKey"].ToString();
+                string rolloutKeySuffix = rolloutKey.Substring((featureKey + "_").Length);
+                message += $" Got rollout:{rolloutKeySuffix} with variation:{decision["rolloutVariationId"]}";
+            }
+            
+            if (decision.ContainsKey("experimentKey") && decision["experimentKey"] != null && 
+                decision.ContainsKey("experimentVariationId") && decision["experimentVariationId"] != null)
+            {
+                string experimentKey = decision["experimentKey"].ToString();
+                string featureKey = decision["featureKey"].ToString();
+                string experimentKeySuffix = experimentKey.Substring((featureKey + "_").Length);
+                message += $" and experiment:{experimentKeySuffix} with variation:{decision["experimentVariationId"]}";
+            }
+            
+            debugEventProps["msg"] = message;
+            
+            foreach (var kvp in decisionKeys)
+            {
+                debugEventProps[kvp.Key] = kvp.Value;
             }
         }
     }

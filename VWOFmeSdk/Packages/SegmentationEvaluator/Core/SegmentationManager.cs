@@ -30,6 +30,8 @@ using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Evaluators;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk.Packages.SegmentationEvaluator.Core
 {
@@ -100,13 +102,15 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Core
                 try
                 {
                     var queryParamsEncoded = GatewayServiceUtil.GetQueryParams(queryParams);
-                    var response = GatewayServiceUtil.GetFromGatewayService(queryParamsEncoded, UrlEnum.GET_USER_DATA.GetUrl());
+                    var response = GatewayServiceUtil.GetFromGatewayService(queryParamsEncoded, UrlEnum.GET_USER_DATA.GetUrl(), context);
                     var gatewayServiceModel = JsonConvert.DeserializeObject<GatewayService>(response);
                     context.Vwo = gatewayServiceModel;
                 }
                 catch (Exception err)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "Error in setting contextual data for segmentation. Got error: " + err);
+                    LogManager.GetInstance().ErrorLog("ERROR_SETTING_SEGMENTATION_CONTEXT", 
+                        new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(err as Exception) } },
+                        new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
                 }
             }
         }
@@ -124,9 +128,8 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Core
                 JToken dslNodes = dsl is string ? JToken.Parse(dsl.ToString()) : JToken.FromObject(dsl);
                 return evaluator.IsSegmentationValid(dslNodes, properties);
             }
-            catch (Exception exception)
+           catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Exception occurred validate segmentation " + exception.Message);
                 return false;
             }
         }

@@ -26,6 +26,7 @@ using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Services;
 using System.Linq;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Packages.Logger.Core;
 
 namespace VWOFmeSdk.Utils
 {
@@ -353,6 +354,48 @@ namespace VWOFmeSdk.Utils
             }
             int startRange = (int)Math.Ceiling(variationWeight * 100);
             return Math.Min(startRange, ConstantsNamespace.Constants.MAX_TRAFFIC_VALUE);
+        }
+
+        /// <summary>
+        /// Retrieves the key of a campaign by its ID.
+        /// </summary>
+        /// <param name="settings">The settings model containing all campaigns.</param>
+        /// <param name="campaignId">The ID of the campaign to retrieve.</param>
+        /// <returns>The key of the campaign or null if not found.</returns>
+        public static string GetCampaignKeyFromCampaignId(Settings settings, int campaignId)
+        {
+            var campaign = settings.Campaigns.FirstOrDefault(c => c.Id == campaignId);
+            return campaign?.Key;
+        }
+
+        /// <summary>
+        /// Retrieves the name of a variation by its ID within a specific campaign identified by its ID.
+        /// </summary>
+        /// <param name="settings">The settings model containing all campaigns.</param>
+        /// <param name="campaignId">The ID of the campaign.</param>
+        /// <param name="variationId">The ID of the variation to retrieve.</param>
+        /// <returns>The name of the variation or null if not found.</returns>
+        public static string GetVariationNameFromCampaignIdAndVariationId(Settings settings, int campaignId, int variationId)
+        {
+            var campaign = settings.Campaigns.FirstOrDefault(c => c.Id == campaignId);
+            if (campaign != null)
+            {
+                var variation = campaign.Variations.FirstOrDefault(v => v.Id == variationId);
+                return variation?.Key;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Retrieves the type of a campaign by its ID.
+        /// </summary>
+        /// <param name="settings">The settings model containing all campaigns.</param>
+        /// <param name="campaignId">The ID of the campaign to retrieve.</param>
+        /// <returns>The type of the campaign or null if not found.</returns>
+        public static string GetCampaignTypeFromCampaignId(Settings settings, int campaignId)
+        {
+            var campaign = settings.Campaigns.FirstOrDefault(c => c.Id == campaignId);
+            return campaign?.Type;
         }
 
         /// <summary>

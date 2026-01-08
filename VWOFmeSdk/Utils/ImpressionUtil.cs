@@ -22,6 +22,8 @@ using VWOFmeSdk;
 using VWOFmeSdk.Enums;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Models.User;
+using VWOFmeSdk.Utils;
+using ConstantsNamespace = VWOFmeSdk.Constants;
 
 namespace VWOFmeSdk.Utils
 {
@@ -34,10 +36,45 @@ namespace VWOFmeSdk.Utils
         /// <param name="campaignId"></param>
         /// <param name="variationId"></param>
         /// <param name="context"></param>
-        public static void CreateAndSendImpressionForVariationShown(Settings settings, int campaignId, int variationId, VWOContext context)
+        public static void CreateAndSendImpressionForVariationShown(Settings settings, int campaignId, int variationId, VWOContext context, string featureKey)
         {
             var payload = NetworkUtil.GetTrackUserPayloadData(settings, EventEnum.VWO_VARIATION_SHOWN.GetValue(), campaignId, variationId, context);
             var vwoInstance = VWO.GetInstance();
+
+            // Get the campaign key with feature name
+            string campaignKeyWithFeatureName = CampaignUtil.GetCampaignKeyFromCampaignId(settings, campaignId);
+            // Get the variation name for the campaignId and variationId
+            string variationName = CampaignUtil.GetVariationNameFromCampaignIdAndVariationId(settings, campaignId, variationId);
+            string campaignKey = string.Empty;
+            // If featureKey is equal to the campaignKeyWithFeatureName, set campaignKey to IMPACT_ANALYSIS constant
+            if (featureKey == campaignKeyWithFeatureName)
+            {
+                campaignKey = ConstantsNamespace.Constants.IMPACT_ANALYSIS;
+            }
+            else
+            {
+                // Otherwise, split the campaignKeyWithFeatureName and get the part after featureKey + "_"
+                var prefix = featureKey + "_";
+                if (!string.IsNullOrEmpty(campaignKeyWithFeatureName) && campaignKeyWithFeatureName.StartsWith(prefix))
+                {
+                    campaignKey = campaignKeyWithFeatureName.Substring(prefix.Length);
+                }
+                else
+                {
+                    campaignKey = campaignKeyWithFeatureName;
+                }
+            }
+            // Get the campaign type from campaignId
+            string campaignType = CampaignUtil.GetCampaignTypeFromCampaignId(settings, campaignId);
+            
+
+            Dictionary<string, object> campaignInfo = new Dictionary<string, object>
+            {
+                { "campaignKey", campaignKey },
+                { "variationName", variationName },
+                { "featureKey", featureKey },
+                { "campaignType", campaignType }
+            };
             // Check if batch events are enabled
             if (vwoInstance.BatchEventQueue != null)
             {
@@ -47,7 +84,7 @@ namespace VWOFmeSdk.Utils
             else
             {
                 var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VWO_VARIATION_SHOWN.GetValue(), EncodeURIComponent(context.UserAgent), context.IpAddress);
-                NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress);
+                NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress, campaignInfo);
             }
         }
 

@@ -27,6 +27,7 @@ using VWOFmeSdk.Models;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Services;
 using static VWOFmeSdk.Utils.CampaignUtil;
+using VWOFmeSdk.Packages.Logger.Core;
 
 namespace VWOFmeSdk.Utils
 {
@@ -52,7 +53,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "Exception occurred while processing settings " + exception.Message);
+                LogManager.GetInstance().ErrorLog("ERROR_PROCESSING_SETTINGS", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });   
             }
         }
 

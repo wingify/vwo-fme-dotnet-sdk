@@ -24,6 +24,9 @@ using VWOFmeSdk.Packages.NetworkLayer.Manager;
 using VWOFmeSdk.Packages.NetworkLayer.Models;
 using VWOFmeSdk.Services;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Models.User;
+using VWOFmeSdk.Enums;
 
 namespace VWOFmeSdk.Utils
 {
@@ -35,12 +38,21 @@ namespace VWOFmeSdk.Utils
          * @param endpoint The endpoint to send the request to
          * @return The response data from the gateway service
          */
-        public static string GetFromGatewayService(Dictionary<string, string> queryParams, string endpoint)
+        public static string GetFromGatewayService(Dictionary<string, string> queryParams, string endpoint, VWOContext context)
         {
             NetworkManager networkInstance = NetworkManager.GetInstance();
             if (UrlService.GetBaseUrl().Contains(ConstantsNamespace.Constants.HOST_NAME))
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "GATEWAY_URL_ERROR", null);
+                LogManager.GetInstance().ErrorLog(
+                    "INVALID_GATEWAY_URL",
+                    new Dictionary<string, string> { },
+                    new Dictionary<string, object>
+                    {
+                        { "an", ApiEnum.GET_FLAG.GetValue() },
+                        { "uuid", context.VwoUuid },
+                        { "sId", context.VwoSessionId }
+                    }
+                );
                 return null;
             }
 
@@ -60,7 +72,16 @@ namespace VWOFmeSdk.Utils
                 ResponseModel response = networkInstance.Get(request);
                 if (response.GetStatusCode() != 200)
                 {
-                    LoggerService.Log(LogLevelEnum.ERROR, "GATEWAY_SERVICE_ERROR", new Dictionary<string, string> { { "err", response.GetError().ToString() } });
+                    LogManager.GetInstance().ErrorLog(
+                        "ERROR_SETTING_SEGMENTATION_CONTEXT", 
+                        new Dictionary<string, string> { { "err", response.GetError().ToString() } },
+                        new Dictionary<string, object>
+                        {
+                            { "an", ApiEnum.GET_FLAG.GetValue() },
+                            { "uuid", context.VwoUuid },
+                            { "sId", context.VwoSessionId }
+                        }
+                    );
                     return null;
                 }
 
@@ -68,7 +89,16 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception e)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "GATEWAY_SERVICE_ERROR", new Dictionary<string, string> { { "err", e.ToString() } });
+                LogManager.GetInstance().ErrorLog(
+                    "ERROR_SETTING_SEGMENTATION_CONTEXT", 
+                    new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e) } },
+                    new Dictionary<string, object>
+                    {
+                        { "an", ApiEnum.GET_FLAG.GetValue() },
+                        { "uuid", context.VwoUuid },
+                        { "sId", context.VwoSessionId }
+                    }
+                );
                 return null;
             }
         }

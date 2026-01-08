@@ -25,6 +25,8 @@ using VWOFmeSdk.Packages.Logger.Transports;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Enums;
 using VWOFmeSdk.Utils;
+using VWOFmeSdk.Services;
+using Newtonsoft.Json;
 
 namespace VWOFmeSdk.Packages.Logger.Core
 {
@@ -207,21 +209,56 @@ namespace VWOFmeSdk.Packages.Logger.Core
         {
             transportManager.Error(message);
 
-            // Check if the message has already been logged
-            string messageToSend = $"{message}-{ConstantsNamespace.Constants.SDK_NAME}-{SDKMetaUtil.GetSdkVersion()}";
+        }
 
-            if (!storedMessages.Contains(messageToSend))
+        /// <summary>
+        /// Middleware method that stores error in DebuggerService and logs it.
+        /// </summary>
+        /// <param name="template">Error message template key</param>
+        /// <param name="data">Data dictionary to replace template variables</param>
+        /// <param name="debugData">Additional debug data</param>
+        /// <param name="shouldSendToVWO">Whether to send the error to VWO</param>
+        public void ErrorLog(string template, Dictionary<string, string> data = null, Dictionary<string, object> debugData = null, bool shouldSendToVWO = true)
+        {
+            try
             {
-                // Add the message to the stored set to prevent duplicates
-                storedMessages.Add(messageToSend);
+                if (data == null)
+                {
+                    data = new Dictionary<string, string>();
+                }
 
-                var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VWO_ERROR.GetValue());
+                if (debugData == null)
+                {
+                    debugData = new Dictionary<string, object>();
+                }
 
-                // create the payload
-                var payload = NetworkUtil.GetMessagingEventPayload("error", message, EventEnum.VWO_ERROR.GetValue());
+                var errorMessages = LoggerService.ErrorMessages;
+                string message = LogMessageUtil.BuildMessage(errorMessages.ContainsKey(template) ? errorMessages[template] : template, data);
+                this.Error(message);
 
-                // Send the error event via HTTP request asynchronously
-                NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_ERROR.GetValue());
+                if (shouldSendToVWO)
+                {
+                    var debugEventProps = new Dictionary<string, object>(debugData);
+                    
+                    // Add data to debug event props
+                    foreach (var kvp in data)
+                    {
+                        debugEventProps[kvp.Key] = kvp.Value;
+                    }
+
+                    // Add message template and level
+                    debugEventProps["msg_t"] = template;
+                    debugEventProps["msg"] = message;
+                    debugEventProps["lt"] = LogLevelEnum.ERROR.ToString().ToLower();
+                    debugEventProps["cg"] = DebuggerCategoryEnum.ERROR.GetValue();
+
+                    // Send debug event to VWO
+                    DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
+                }
+            }
+            catch (Exception err)
+            {
+                this.Error($"Got error while logging error: {FunctionUtil.GetFormattedErrorMessage(err)}");
             }
         }
     }

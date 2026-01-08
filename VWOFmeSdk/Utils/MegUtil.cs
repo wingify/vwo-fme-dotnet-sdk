@@ -29,6 +29,7 @@ using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Packages.DecisionMaker;
 using VWOFmeSdk.Decorators;
 using VWOFmeSdk.Utils;
+using VWOFmeSdk.Packages.Logger.Core;
 
 namespace VWOFmeSdk.Utils
 {
@@ -342,7 +343,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "MEG: error inside FindWinnerCampaignAmongEligibleCampaigns " + exception.Message);
+                LogManager.GetInstance().ErrorLog("MEG_ERROR_INSIDE_FIND_WINNER_CAMPAIGN_AMONG_ELIGIBLE_CAMPAIGNS", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
             }
 
             return winnerCampaign;
@@ -400,7 +401,7 @@ namespace VWOFmeSdk.Utils
                     new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
                     {
                         { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
-                        { "userId", context.Id },
+                        { "context", context },
                         { "experimentId", winnerCampaign.Id },
                         { "experimentKey", winnerCampaign.Key },
                         { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }
@@ -409,7 +410,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "MEG: error inside NormalizeWeightsAndFindWinningCampaign " + exception.Message);
+                LogManager.GetInstance().ErrorLog("MEG_ERROR_INSIDE_NORMALIZE_WEIGHTS_AND_FIND_WINNER_CAMPAIGN", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
             }
 
             return null;
@@ -522,7 +523,7 @@ namespace VWOFmeSdk.Utils
                         new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
                         {
                             { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
-                            { "userId", context.Id },
+                            { "context", context},
                             { "experimentId", winnerCampaign.Id },
                             { "experimentKey", winnerCampaign.Key },
                             { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }
@@ -531,12 +532,12 @@ namespace VWOFmeSdk.Utils
                 }
                 else
                 {
-                    LoggerService.Log(LogLevelEnum.INFO, $"No winner campaign found for MEG group: {groupId}");
+                    LogManager.GetInstance().ErrorLog("MEG_NO_WINNER_CAMPAIGN_FOUND", new Dictionary<string, string> { { "groupId", groupId.ToString() } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
                 }
             }
             catch (Exception exception)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "MEG: error inside GetCampaignUsingAdvancedAlgo " + exception.Message);
+                LogManager.GetInstance().ErrorLog("MEG_ERROR_INSIDE_GET_CAMPAIGN_USING_ADVANCED_ALGO", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
             }
 
             return winnerCampaign;

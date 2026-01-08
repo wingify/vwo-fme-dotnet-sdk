@@ -2,10 +2,24 @@
   "INIT_OPTIONS_ERROR": "[ERROR]: VWO-SDK {date} Options should be of type object",
   "INIT_OPTIONS_SDK_KEY_ERROR": "[ERROR]: VWO-SDK {date} Please provide the sdkKey in the options and should be a of type string",
   "INIT_OPTIONS_ACCOUNT_ID_ERROR": "[ERROR]: VWO-SDK {date} Please provide VWO account ID in the options and should be a of type string|number",
+  "SETTINGS_NULL_OR_EMPTY": "Settings cannot be null or empty. Settings will not be set.",
+  "SETTINGS_MANUALLY_SET": "Settings have been manually set",
+  "ERROR_SETTING_SETTINGS_MANUALLY": "Error occurred while setting settings manually: {err}",
 
   "INIT_OPTIONS_INVALID": "Invalid key:{key} passed in options. Should be of type:{correctType} and greater than equal to 1000",
 
-  "SETTINGS_FETCH_ERROR": "Settings could not be fetched. ",
+  "INVALID_BATCH_EVENTS_CONFIG": "Invalid batch events configuration. Events per request should be greater than 0 and less than 5000, and request time interval should be greater than 0",
+  "INVALID_EVENTS_PER_REQUEST": "Events_per_request values is invalid (should be greater than 0 and less than 5000). Using default value of events_per_request parameter : 100",
+  "INVALID_REQUEST_TIME_INTERVAL": "Request_time_interval values is invalid (should be greater than 0). Using default value of request_time_interval parameter : 600",
+
+  "BATCH_FLUSH_FAILED": "Failed to send batch events. Retrying next time.",
+  "BATCHING_NOT_ENABLED": "Batching is not enabled. Pass batchEvents in the SDK configuration while invoking init API.",
+  "MEG_NO_WINNER_CAMPAIGN_FOUND": "No winner campaign found for MEG group: {groupId}",
+  "MEG_ERROR_INSIDE_FIND_WINNER_CAMPAIGN_AMONG_ELIGIBLE_CAMPAIGNS": "Error inside FindWinnerCampaignAmongEligibleCampaigns: {err}",
+  "MEG_ERROR_INSIDE_NORMALIZE_WEIGHTS_AND_FIND_WINNER_CAMPAIGN": "Error inside NormalizeWeightsAndFindWinningCampaign: {err}",
+  "MEG_ERROR_INSIDE_GET_CAMPAIGN_USING_ADVANCED_ALGO": "Error inside GetCampaignUsingAdvancedAlgo: {err}",
+
+  "ERROR_FETCHING_SETTINGS": "Settings could not be fetched.",
   "SETTINGS_SCHEMA_INVALID": "Settings are not valid. Failed schema validation",
   "SETTINGS_JSON_PARSE_ERROR": "Invalid JSON format in settings. Error at path:{path}. {error}",
   "SETTINGS_ACCOUNT_ID_MISSING": "Settings are not valid. AccountId field is missing or null in settings",
@@ -27,12 +41,17 @@
   "STORED_DATA_ERROR": "Error in getting data from storage.",
   "STORING_DATA_ERROR": "Key:{featureKey} is not valid. Not able to store data into storage",
 
-  "GATEWAY_URL_ERROR": "Please provide a valid URL for VWO Gateway Service while initializing the SDK",
+  "INVALID_GATEWAY_URL": "Please provide a valid URL for VWO Gateway Service while initializing the SDK",
 
   "NETWORK_CALL_FAILED": "Error occurred while sending {method} request.",
   "NETWORK_CALL_RETRY_FAILED": "Max retries reached. Request failed for {endPoint}, Error: {err}",
 
   "USER_ID_NULL_OR_EMPTY": "User ID passed cannot be null or empty",
   "SDK_INIT_EVENT_FAILED": "Error occurred while sending SDK init event. Error:{err}",
-  "NETWORK_CALL_RETRY_ATTEMPT": "Request failed for {endPoint}, Error: {err}. Retrying in {delay} seconds, attempt {attempt} of {maxRetries}"
+  "ERROR_EVALUATING_RULE": "Error occurred while evaluating rule: {err}",
+  "ERROR_PROCESSING_SETTINGS": "Error occurred while processing settings: {err}",
+  "ERROR_PARSING_SETTINGS": "Error occurred while parsing settings: {err}",
+  "ERROR_UPDATING_SETTINGS": "Error occurred while updating settings: {err}",
+  "NETWORK_CALL_RETRY_ATTEMPT": "Request failed for {endPoint}, Error: {err}. Retrying in {delay} seconds, attempt {attempt} of {maxRetries}",
+  "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES": "Network call for {extraData} failed after {attempts} retry attempt(s). Got Error: {err}"
 }

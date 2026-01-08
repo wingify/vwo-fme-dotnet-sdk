@@ -23,6 +23,8 @@ using VWOFmeSdk.Utils;
 using VWOFmeSdk.Enums;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Packages.Logger.Enums;
+using VWOFmeSdk.Packages.Logger.Core;
+using System.Collections.Generic;
 
 namespace VWOFmeSdk.Packages.DecisionMaker
 {
@@ -51,10 +53,8 @@ namespace VWOFmeSdk.Packages.DecisionMaker
         {
             if (string.IsNullOrEmpty(userId))
             {
-                string template = LoggerService.ErrorMessages["USER_ID_NULL_OR_EMPTY"];
-                string message = LogMessageUtil.BuildMessage(template, null);
-                LoggerService.Log(LogLevelEnum.ERROR, "USER_ID_NULL_OR_EMPTY", null);
-                throw new ArgumentException(message);
+                LogManager.GetInstance().ErrorLog("USER_ID_NULL_OR_EMPTY", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
+                throw new ArgumentException("USER_ID_NULL_OR_EMPTY");
             }
             long hashValue = GenerateHashValue(userId); // Generate the hash value using murmurHash
             return GenerateBucketValue(hashValue, maxValue, 1); // Generate the bucket value using the hash value (default multiplier)
@@ -65,10 +65,8 @@ namespace VWOFmeSdk.Packages.DecisionMaker
             int maxValue = 100;
             if (string.IsNullOrEmpty(userId))
             {
-                string template = LoggerService.ErrorMessages["USER_ID_NULL_OR_EMPTY"];
-                string message = LogMessageUtil.BuildMessage(template, null);
-                LoggerService.Log(LogLevelEnum.ERROR, "USER_ID_NULL_OR_EMPTY", null);
-                throw new ArgumentException(message);
+                LogManager.GetInstance().ErrorLog("USER_ID_NULL_OR_EMPTY", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
+                throw new ArgumentException("USER_ID_NULL_OR_EMPTY");
             }
             long hashValue = GenerateHashValue(userId); // Generate the hash value using murmurHash
             return GenerateBucketValue(hashValue, maxValue, 1); // Generate the bucket value using the hash value (default multiplier)

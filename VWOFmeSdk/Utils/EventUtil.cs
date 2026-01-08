@@ -27,6 +27,7 @@ using VWOFmeSdk;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Models.Schemas;
 using VWOFmeSdk.Models.User;
+using VWOFmeSdk.Packages.Logger.Core;
 
 namespace VWOFmeSdk.Utils
 {
@@ -64,10 +65,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception ex)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SDK_INIT_EVENT_FAILED", new Dictionary<string, string>
-                {
-                    { "err", ex.ToString() }
-                });
+                LogManager.GetInstance().ErrorLog("SDK_INIT_EVENT_FAILED", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
             }
         }
 
@@ -91,10 +89,7 @@ namespace VWOFmeSdk.Utils
             }
             catch (Exception ex)
             {
-                LoggerService.Log(LogLevelEnum.ERROR, "SDK_USAGE_STATS_EVENT_ERROR", new Dictionary<string, string>
-                {
-                    { "error", ex.Message }
-                });
+                LogManager.GetInstance().ErrorLog("SDK_USAGE_STATS_EVENT_ERROR", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
             }
         }
 
