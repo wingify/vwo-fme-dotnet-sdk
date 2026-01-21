@@ -28,7 +28,8 @@ namespace VWOFmeSdk.Enums
         TRACK,
         SET_ATTRIBUTE,
         FLUSH_EVENTS,
-        BATCH_FLUSH
+        BATCH_FLUSH,
+        SHUTDOWN
     }
 
     public static class ApiEnumExtensions
@@ -51,6 +52,8 @@ namespace VWOFmeSdk.Enums
                     return "flushEvents";
                 case ApiEnum.BATCH_FLUSH:
                     return "batchFlush";
+                case ApiEnum.SHUTDOWN:
+                    return "shutdown";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(apiEnum), apiEnum, null);
             }

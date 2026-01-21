@@ -44,6 +44,7 @@ namespace VWOFmeSdk
             MissingMemberHandling = MissingMemberHandling.Ignore
         };
         private BatchEventQueue batchEventQueue;
+        private VWOBuilder vwoBuilder;
         
         public BatchEventQueue BatchEventQueue
         {
@@ -57,11 +58,12 @@ namespace VWOFmeSdk
         /// <param name="settings">Settings JSON string</param>
         /// <param name="options">VWOInitOptions object</param>
         /// <returns> VWOClient object</returns>
-        public VWOClient(string settings, VWOInitOptions options)
+        public VWOClient(string settings, VWOInitOptions options, VWOBuilder vwoBuilder)
         {
             try
             {
                 this.options = options;
+                this.vwoBuilder = vwoBuilder;
                 if (settings == null)
                 {
                     return;
@@ -350,6 +352,30 @@ namespace VWOFmeSdk
             catch (Exception exception)
             {
                 LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } });
+            }
+        }
+
+        /// <summary>
+        /// Stops SDK background activities (e.g. polling and batching).
+        /// </summary>
+        public void Shutdown()
+        {
+            try {
+                LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", ApiEnum.SHUTDOWN.GetValue() } });
+                this.vwoBuilder?.StopPolling();
+
+                //if batching enabled, call the flushEvents method
+                if (this.vwoBuilder.IsBatchingUsed)
+                {
+                    this.batchEventQueue.FlushAndClearTimer(shouldWaitForFlush: true);
+                    LoggerService.Log(LogLevelEnum.INFO, "Successfully flushed BatchQueue, removed timers and cleared polling");
+                    return;
+                }
+                LoggerService.Log(LogLevelEnum.INFO, "Successfully cleared polling");
+            } 
+            catch (Exception exception)
+            {
+                LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", ApiEnum.SHUTDOWN.GetValue() }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.SHUTDOWN.GetValue() } });
             }
         }
 

@@ -75,15 +75,13 @@ namespace VWOFmeSdk.Services
         /// Flushes the batch queue by sending all events to the server.
         /// </summary>
         /// <returns>True if events were successfully sent, false if skipped or failed to send</returns>
-        public bool Flush(bool isManualFlush = false)
+        public bool Flush(bool isManualFlush = false, bool shouldWaitForFlush = false)
         {
-              
             if (isManualFlush)
             {
                 if (batchQueue.Count > 0)
                 {
-                    LoggerService.Log(LogLevelEnum.DEBUG, "Manual flush initiated.");
-                    LoggerService.Log(LogLevelEnum.DEBUG, $"Queue size: {batchQueue.Count}");
+                    LoggerService.Log(LogLevelEnum.DEBUG, $"Manual flush initiated with queue size: {batchQueue.Count}");
 
                     // Create a temporary list to hold the events for the batch
                     List<Dictionary<string, object>> eventsToSend = new List<Dictionary<string, object>>(batchQueue);
@@ -93,7 +91,7 @@ namespace VWOFmeSdk.Services
                     LoggerService.Log(LogLevelEnum.DEBUG, $"Flushing {eventsToSend.Count} events manually.");
                     bool isSentSuccessfully = false;
 
-                    Task.Run(() =>
+                    var flushTask = Task.Run(() =>
                     {
                         try
                         {
@@ -119,6 +117,10 @@ namespace VWOFmeSdk.Services
                             isSentSuccessfully = false;
                         }
                     });
+
+                    if (shouldWaitForFlush) {
+                        flushTask.Wait();
+                    }
                     // Clear the timer and set it to null
                     if (timer != null)
                     {
@@ -160,6 +162,10 @@ namespace VWOFmeSdk.Services
                         if (isSentSuccessfully)
                         {
                             LoggerService.Log(LogLevelEnum.INFO, $"Batch flush successful. Sent {eventsToSend.Count} events.");
+                            if (batchQueue.Count > 0)
+                            {
+                                isSentSuccessfully = Flush(true);
+                            }
                         }
                         else
                         {
@@ -203,12 +209,19 @@ namespace VWOFmeSdk.Services
         /// Flushes the queue and clears the timer
         /// </summary>
         /// <returns>True if flush was successful, false otherwise</returns>
-        public bool FlushAndClearTimer()
+        public bool FlushAndClearTimer(bool shouldWaitForFlush = false)
         {
             bool flushResult = false;
 
             // First, flush the events manually
-            flushResult = Flush(true);
+            flushResult = Flush(true, shouldWaitForFlush);
+            if (shouldWaitForFlush) {
+                if (timer != null)
+                {
+                    timer.Dispose();
+                    timer = null;
+                }
+            }
 
             return flushResult;
         }

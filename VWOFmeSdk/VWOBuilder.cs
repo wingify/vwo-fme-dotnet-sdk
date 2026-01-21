@@ -49,6 +49,7 @@ namespace VWOFmeSdk
         private string originalSettings;
         private bool isSettingsFetchInProgress;
         public bool settingsSetManually = false;
+        public bool stopPolling = false;
 
         public bool IsBatchingUsed { get; private set; }
         private BatchEventQueue batchEventQueue;
@@ -295,8 +296,14 @@ namespace VWOFmeSdk
                 LogManager.GetInstance().ErrorLog("INIT_OPTIONS_INVALID", new Dictionary<string, string> { { "key", "pollInterval" }, { "correctType", "number" } }, new Dictionary<string, object> { { "an", ApiEnum.INIT.GetValue() } });
                 return this;
             }
+            stopPolling = false;
 
-            new System.Threading.Thread(CheckAndPoll).Start();
+            var pollingThread = new System.Threading.Thread(CheckAndPoll)
+            {
+                IsBackground = true
+            };
+            pollingThread.Start();
+
 
             return this;
         }
@@ -392,9 +399,13 @@ namespace VWOFmeSdk
         {
             int pollingInterval = this.options.PollInterval.Value;
 
-            while (true)
+            while (!stopPolling)
             {
                 System.Threading.Thread.Sleep(pollingInterval);
+                if (stopPolling)
+                {
+                    break;
+                }
                 try
                 {
                     string latestSettings = GetSettings(true);
@@ -424,6 +435,14 @@ namespace VWOFmeSdk
             }
         }
 
+        /// <summary>
+        /// Stops background activities such as polling and batching timers.
+        /// </summary>
+        public void StopPolling()
+        {
+            stopPolling = true;
+        }
+        
         /// <summary>
         /// Converts logger options from Dictionary<string, string> to Dictionary<string, object>.
         /// </summary>

@@ -38,7 +38,7 @@ namespace VWOFmeSdk
         /// </summary>
         /// <param name="settings">Configuration settings for the VWO instance.</param>
         /// <param name="options">Configuration options for the VWO instance.</param>
-        public VWO(string settings, VWOInitOptions options) : base(settings, options) { }
+        public VWO(string settings, VWOInitOptions options, VWOBuilder vwoBuilder) : base(settings, options, vwoBuilder) { }
 
         /// <summary>
         /// Sets the singleton instance of VWO.
@@ -81,7 +81,7 @@ namespace VWOFmeSdk
                 settings = vwoBuilder.GetSettings(false);
             }
             // Create the VWO instance
-            VWO vwoInstance = new VWO(settings, options);
+            VWO vwoInstance = new VWO(settings, options, vwoBuilder);
 
             // Set VWOClient instance in VWOBuilder
             vwoBuilder.SetVWOClient(vwoInstance);
