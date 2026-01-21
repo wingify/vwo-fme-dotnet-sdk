@@ -15,7 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Includes error handling for safe shutdown operations
 
 ```csharp
-// Gracefully shutdown the SDK
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "YOUR_SDK_KEY",
+    AccountId = YOUR_ACCOUNT_ID
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+
+// Gracefully shut down the SDK
 vwoInstance.Shutdown();
 ```
 
