@@ -37,25 +37,18 @@ namespace VWOFmeSdk.Services
             }
         }
 
-        /**
-         * Returns the base URL for the API requests
-         */
-        public static string GetBaseUrl()
+        /// <summary>
+        /// Retrieves the endpoint with collection prefix.
+        /// </summary>
+        /// <param name="endpoint">The endpoint path (e.g., "/batch")</param>
+        /// <returns>The endpoint prefixed with the collection prefix if set; otherwise, the original endpoint.</returns>
+        public static string GetEndpointWithCollectionPrefix(string endpoint)
         {
-            string baseUrl = SettingsManager.GetInstance().hostname;
-
-            if (SettingsManager.GetInstance().isGatewayServiceProvided)
+            if (!string.IsNullOrEmpty(collectionPrefix))
             {
-                return baseUrl;
+                return $"/{collectionPrefix}{endpoint}";
             }
-
-            // Construct URL with collectionPrefix if it exists
-            if (!string.IsNullOrEmpty(UrlService.collectionPrefix))
-            {
-                return baseUrl + "/" + UrlService.collectionPrefix;
-            }
-
-            return baseUrl;
+            return endpoint;
         }
     }
 }

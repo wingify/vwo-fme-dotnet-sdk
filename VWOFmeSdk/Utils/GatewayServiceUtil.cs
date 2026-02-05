@@ -41,7 +41,7 @@ namespace VWOFmeSdk.Utils
         public static string GetFromGatewayService(Dictionary<string, string> queryParams, string endpoint, VWOContext context)
         {
             NetworkManager networkInstance = NetworkManager.GetInstance();
-            if (UrlService.GetBaseUrl().Contains(ConstantsNamespace.Constants.HOST_NAME))
+            if (SettingsManager.GetInstance().hostname.Contains(ConstantsNamespace.Constants.HOST_NAME))
             {
                 LogManager.GetInstance().ErrorLog(
                     "INVALID_GATEWAY_URL",
@@ -59,9 +59,9 @@ namespace VWOFmeSdk.Utils
             try
             {
                 RequestModel request = new RequestModel(
-                    UrlService.GetBaseUrl(),
+                    SettingsManager.GetInstance().hostname,
                     "GET",
-                    endpoint,
+                    UrlService.GetEndpointWithCollectionPrefix(endpoint),
                     queryParams,
                     null,
                     null,

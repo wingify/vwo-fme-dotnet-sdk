@@ -41,11 +41,18 @@ namespace VWOFmeSdk.Models.User
         private bool isUsageStatsDisabled;
         private Dictionary<string, object> vwoMetaData = new Dictionary<string, object>();
         private Dictionary<string, object> retryConfig;
+        private string proxyUrl = "";
 
         public Dictionary<string, object> RetryConfig
         {
             get { return retryConfig; }
             set { retryConfig = value ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG; }
+        }
+
+        public string ProxyUrl
+        {
+            get { return proxyUrl; }
+            set { proxyUrl = value; }
         }
 
         private string settings;

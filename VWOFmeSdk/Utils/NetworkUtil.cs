@@ -369,7 +369,7 @@ namespace VWOFmeSdk.Utils
             {
                 NetworkManager.GetInstance().AttachClient(null,NetworkManager.GetInstance().GetRetryConfig());
                 var headers = CreateHeaders(userAgent, ipAddress);
-                var request = new RequestModel(UrlService.GetBaseUrl(), "POST", UrlEnum.EVENTS.GetUrl(), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port, NetworkManager.GetInstance().GetRetryConfig());
+                var request = new RequestModel(SettingsManager.GetInstance().hostname, "POST", UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl()), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port, NetworkManager.GetInstance().GetRetryConfig());
 
                 // Derive event name from query properties (en key)
                 string eventName = null;
@@ -483,7 +483,7 @@ namespace VWOFmeSdk.Utils
 
                     LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
                     {
-                        { "extraData", $"POST {UrlService.GetBaseUrl() + UrlEnum.EVENTS.GetUrl()}" },
+                        { "extraData", $"POST { SettingsManager.GetInstance().hostname + UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl())}" },
                         { "attempts", response.GetTotalAttempts().ToString() },
                         { "err", FunctionUtil.GetFormattedErrorMessage(response.GetError() as Exception) }
                     });
@@ -536,9 +536,9 @@ namespace VWOFmeSdk.Utils
 
                 // Create the RequestModel with necessary data
                 var requestModel = new RequestModel(
-                    UrlService.GetBaseUrl(),
+                    SettingsManager.GetInstance().hostname,
                     "POST",
-                    UrlEnum.BATCH_EVENTS.GetUrl(),
+                    UrlService.GetEndpointWithCollectionPrefix(UrlEnum.BATCH_EVENTS.GetUrl()),
                     query,
                     batchPayload,
                     new Dictionary<string, string>
@@ -672,7 +672,7 @@ namespace VWOFmeSdk.Utils
 
         private static string GenerateEventUrl()
         {
-            return ConstantsNamespace.Constants.HTTPS_PROTOCOL + UrlService.GetBaseUrl() + UrlEnum.EVENTS.GetUrl();
+            return ConstantsNamespace.Constants.HTTPS_PROTOCOL + SettingsManager.GetInstance().hostname + UrlEnum.EVENTS.GetUrl();
         }
 
         private static string GenerateMsgId(string uuid)
@@ -926,7 +926,7 @@ namespace VWOFmeSdk.Utils
         public static object SendEvent(Dictionary<string, string> properties, Dictionary<string, object> payload, string eventName)
         {
             NetworkManager.GetInstance().AttachClient(null, NetworkManager.GetInstance().GetRetryConfig()); // Use enhanced concurrent connections
-            var baseUrl = UrlService.GetBaseUrl();
+            var baseUrl = SettingsManager.GetInstance().hostname;
             var port = SettingsManager.GetInstance().Port;
             var protocol = SettingsManager.GetInstance().Protocol;
             var retryConfig = new Dictionary<string, object>(NetworkManager.GetInstance().GetRetryConfig());
@@ -939,17 +939,15 @@ namespace VWOFmeSdk.Utils
             if(eventName == EventEnum.VWO_LOG_EVENT.GetValue() || eventName == EventEnum.VWO_USAGE_STATS_EVENT.GetValue() || eventName == EventEnum.VWO_DEBUGGER_EVENT.GetValue())
             {
                 baseUrl = ConstantsNamespace.Constants.HOST_NAME;
-                protocol = ConstantsNamespace.Constants.HTTPS_PROTOCOL;
-                port = 443;
             }
 
             try
             {
                 // Prepare the request model
                 var request = new RequestModel(
-                    baseUrl,
+                    SettingsManager.GetInstance().hostname,
                     "POST",
-                    UrlEnum.EVENTS.GetUrl(),
+                    UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl()),
                     properties,
                     payload,
                     null,

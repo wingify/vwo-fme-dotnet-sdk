@@ -98,6 +98,7 @@ To customize the SDK further, additional parameters can be passed to the `init()
 | `Storage`              | Custom storage mechanism for persisting user decisions and campaign data.                                           | No           | `IStorage`      | See [Storage](#storage) section |
 | `Logger`               | Configure log levels and transport for debugging purposes.                                                          | No           | `ILogger`       | See [Logger](#logger) section   |
 | `Integrations`         | Callback function for integrating with third-party analytics services.                                              | No           | `Action`        | See [Integrations](#integrations) section |
+| `ProxyUrl`         | Custom proxy URL for redirecting all SDK network requests (settings, tracking, etc.) through your own proxy server | No           | `string`        | See [Proxy](#proxy) section |
 
 Refer to the [official VWO documentation](https://developers.vwo.com/v2/docs/fme-dotnet-install) for additional parameter details.
 
@@ -242,6 +243,24 @@ var vwoInitOptions = new VWOInitOptions
 ```
 
 Refer to the [Gateway Documentation](https://developers.vwo.com/v2/docs/gateway-service) for further details.
+
+### Proxy
+
+The `ProxyUrl` parameter allows you to redirect all SDK network calls through a custom proxy URL. This feature enables you to route all SDK network requests (settings, tracking, etc.) through your own proxy server, providing better control over network traffic and security.
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "32-alpha-numeric-sdk-key",
+    AccountId = 123456,
+    ProxyUrl = "http://custom.proxy.com"
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+```
 
 ### Retry Config
 

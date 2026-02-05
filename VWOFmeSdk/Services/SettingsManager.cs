@@ -47,6 +47,8 @@ namespace VWOFmeSdk.Services
         private static SettingsManager instance;
         private int settingsFetchTime;
         private bool isSettingsValid = false;
+        public bool isProxyUrlProvided = false;
+        public string proxyUrl = "";
 
         public bool IsSettingsValid
         {
@@ -89,6 +91,55 @@ namespace VWOFmeSdk.Services
             this.accountId = options.AccountId;
             this.expiry = (int)ConstantsNamespace.Constants.SETTINGS_EXPIRY;
             this.networkTimeout = (int)ConstantsNamespace.Constants.SETTINGS_TIMEOUT;
+            this.hostname = ConstantsNamespace.Constants.HOST_NAME;
+            
+
+            // if proxy url is provided and gateway service is also provided
+            if (!string.IsNullOrEmpty(options.ProxyUrl) && options.GatewayService != null && options.GatewayService.Count > 0)
+            {
+                LoggerService.Log(LogLevelEnum.INFO, "PROXY_AND_GATEWAY_SERVICE_PROVIDED",
+                    new Dictionary<string, string>
+                    {
+                        { "accountId", accountId?.ToString() ?? string.Empty },
+                        { "sdkKey", sdkKey },
+                        { "an", ApiEnum.INIT.GetValue() }
+                    });
+                isGatewayServiceProvided = true;
+            }
+
+            // proxy url provided and gateway not provided
+            if (!string.IsNullOrEmpty(options.ProxyUrl) && !isGatewayServiceProvided)
+            {
+                isProxyUrlProvided = true;
+                try
+                {
+                    var parsedUrl = new Uri(options.ProxyUrl);
+                    this.hostname = parsedUrl.Host;
+                    this.protocol = parsedUrl.Scheme;
+                    // Set port: use explicit port from URL, or use default port for scheme
+                    if (parsedUrl.Port != -1)
+                    {
+                        this.port = parsedUrl.Port;
+                    }
+                    else
+                    {
+                        // Use default port for the scheme (80 for HTTP, 443 for HTTPS)
+                        this.port = parsedUrl.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? 443 : 80;
+                    }
+                }
+                catch (Exception e)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "ERROR_PARSING_PROXY_URL",
+                        new Dictionary<string, string>
+                        {
+                            { "err", e.Message },
+                            { "accountId", accountId?.ToString() ?? string.Empty },
+                            { "sdkKey", sdkKey },
+                            { "an", ApiEnum.INIT.GetValue()}
+                        });
+                    this.hostname = ConstantsNamespace.Constants.HOST_NAME;
+                }
+            }
 
             if (options.GatewayService != null && options.GatewayService.Count > 0)
             {
@@ -115,7 +166,17 @@ namespace VWOFmeSdk.Services
 
                     this.hostname = parsedUrl.Host;
                     this.protocol = parsedUrl.Scheme;
-                    this.port = parsedUrl.Port != -1 ? parsedUrl.Port : (gatewayServicePort != null ? Convert.ToInt32(gatewayServicePort) : 443);
+                    // only set port if explicitly provided, otherwise leave as 0 (default)
+                    if (parsedUrl.Port != -1)
+                    {
+                        this.port = parsedUrl.Port;
+                    }
+                    else if (gatewayServicePort != null)
+                    {
+                        this.port = Convert.ToInt32(gatewayServicePort);
+                    } else {
+                        this.port = parsedUrl.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? 443 : 80;
+                    }
                 }
                 catch (Exception e)
                 {
@@ -126,10 +187,6 @@ namespace VWOFmeSdk.Services
                     );
                     this.hostname = ConstantsNamespace.Constants.HOST_NAME;
                 }
-            }
-            else
-            {
-                this.hostname = ConstantsNamespace.Constants.HOST_NAME;
             }
 
             SettingsManager.instance = this;
@@ -192,7 +249,7 @@ namespace VWOFmeSdk.Services
 
             try
             {
-                RequestModel request = new RequestModel(hostname, "GET", path, options, null, null, this.protocol, port, retryConfig);
+                RequestModel request = new RequestModel(SettingsManager.GetInstance().hostname, "GET", UrlService.GetEndpointWithCollectionPrefix(path), options, null, null, this.protocol, port, retryConfig);
                 request.SetTimeout(networkTimeout);
 
                 // start timer for settings fetch

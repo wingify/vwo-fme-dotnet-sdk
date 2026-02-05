@@ -78,11 +78,7 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Core
                 return;
             }
             
-            // Call gateway service if required for segmentation OR if gateway service is provided and user agent is available
-            bool shouldCallGatewayService = (feature.IsGatewayServiceRequired && !UrlService.GetBaseUrl().Contains(ConstantsNamespace.Constants.HOST_NAME)) ||
-                                           (!UrlService.GetBaseUrl().Contains(ConstantsNamespace.Constants.HOST_NAME) && (!string.IsNullOrEmpty(context.UserAgent) || !string.IsNullOrEmpty(context.IpAddress)));
-            
-            if (shouldCallGatewayService && context.Vwo == null)
+            if (feature.IsGatewayServiceRequired && SettingsManager.GetInstance().isGatewayServiceProvided && context.Vwo == null)
             {
                 var queryParams = new Dictionary<string, string>();
                 if (string.IsNullOrEmpty(context.UserAgent) && string.IsNullOrEmpty(context.IpAddress))

@@ -48,10 +48,11 @@
 
   "USER_ID_NULL_OR_EMPTY": "User ID passed cannot be null or empty",
   "SDK_INIT_EVENT_FAILED": "Error occurred while sending SDK init event. Error:{err}",
+  "NETWORK_CALL_RETRY_ATTEMPT": "Request failed for {endPoint}, Error: {err}. Retrying in {delay} seconds, attempt {attempt} of {maxRetries}",
+  "ERROR_PARSING_PROXY_URL": "Error occurred while parsing proxy URL: {err}",
   "ERROR_EVALUATING_RULE": "Error occurred while evaluating rule: {err}",
   "ERROR_PROCESSING_SETTINGS": "Error occurred while processing settings: {err}",
   "ERROR_PARSING_SETTINGS": "Error occurred while parsing settings: {err}",
   "ERROR_UPDATING_SETTINGS": "Error occurred while updating settings: {err}",
-  "NETWORK_CALL_RETRY_ATTEMPT": "Request failed for {endPoint}, Error: {err}. Retrying in {delay} seconds, attempt {attempt} of {maxRetries}",
   "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES": "Network call for {extraData} failed after {attempts} retry attempt(s). Got Error: {err}"
 }
