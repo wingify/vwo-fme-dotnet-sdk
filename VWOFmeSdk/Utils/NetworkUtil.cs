@@ -32,6 +32,7 @@ using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Services;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Packages.NetworkLayer.Manager;
+using VWOFmeSdk.Packages.NetworkLayer.Client;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Interfaces.Batching;
@@ -40,6 +41,7 @@ using Newtonsoft.Json.Linq;
 using System.Text.Json;
 using VWOFmeSdk.Enums;
 using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Interfaces.Batching;
 
 namespace VWOFmeSdk.Utils
 {
@@ -331,7 +333,7 @@ namespace VWOFmeSdk.Utils
         /// <param name="attributeKey"></param>
         /// <param name="attributeValue"></param>
         /// <returns></returns>
-       public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, Dictionary<string, object> attributes, long? sessionId)
+        public static Dictionary<string, object> GetAttributePayloadData(Settings settings, string userId, string eventName, Dictionary<string, object> attributes, long? sessionId)
         {
             var properties = GetEventBasePayload(settings, userId, eventName, null, null);
             if (sessionId != null)
@@ -363,7 +365,7 @@ namespace VWOFmeSdk.Utils
         /// <param name="payload"></param>
         /// <param name="userAgent"></param>
         /// <param name="ipAddress"></param>
-        public static void SendPostApiRequest(Dictionary<string, string> properties, Dictionary<string, object> payload, string userAgent, string ipAddress, Dictionary<string, object> campaignInfo = null)
+        public static void SendPostApiRequest(Dictionary<string, string> properties, Dictionary<string, object> payload, string userAgent, string ipAddress, Dictionary<string, object> campaignInfo = null, IFlushInterface flushCallback = null)
         {
             try
             {
@@ -467,40 +469,29 @@ namespace VWOFmeSdk.Utils
                     extraDataForMessage = "event: " + (eventName ?? string.Empty);
                 }
 
-                // Perform synchronous POST and build debug event with extraData if retries happened
-                var response = NetworkManager.GetInstance().Post(request);
-
-                if (response != null && response.GetTotalAttempts() > 0)
+                // Enqueue POST request for async processing via channel queue
+                var queuedRequest = new QueuedPostRequest
                 {
-                    var debugEventProps = CreateNetworkAndRetryDebugEvent(
-                        response,
-                        payload,
-                        apiName,
-                        extraDataForMessage
-                    );
-                    debugEventProps["uuid"] = request.GetUuid();
-                    DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
-
-                    LoggerService.Log(LogLevelEnum.INFO, "NETWORK_CALL_SUCCESS_WITH_RETRIES", new Dictionary<string, string>
+                    Request = request,
+                    FlushCallback = flushCallback,
+                    // Store context data needed for response handling
+                    ResponseDataForDebugging = new ResponseDataForDebugging
                     {
-                        { "extraData", $"POST { SettingsManager.GetInstance().hostname + UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl())}" },
-                        { "attempts", response.GetTotalAttempts().ToString() },
-                        { "err", FunctionUtil.GetFormattedErrorMessage(response.GetError() as Exception) }
-                    });
-                }
+                        Payload = payload,
+                        ApiName = apiName,
+                        ExtraDataForMessage = extraDataForMessage
+                    }
+                };
 
-                // Log error if status code is not 2xx (regardless of retries)
-                if (response == null || response.GetStatusCode() < 200 || response.GetStatusCode() > 299)
+                // Enqueue the request to the channel - this is non-blocking
+                // Background worker will process it asynchronously and handle the response
+                bool enqueued = PostRequestChannel.Channel.Writer.TryWrite(queuedRequest);
+
+                if (enqueued)
                 {
-                    var responseModel = new ResponseModel();
-                    responseModel.SetError(new Exception("Network request failed: response is null"));
-                    responseModel.SetStatusCode(0);
-                    //responseModel.SetTotalAttempts(0);
-
-                    var debugEventProps = CreateNetworkAndRetryDebugEvent(responseModel, payload, apiName, extraDataForMessage);
-                    debugEventProps["uuid"] = request.GetUuid();
-                    DebuggerServiceUtil.SendDebugEventToVWO(debugEventProps);
-                    LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "POST" }, { "err", FunctionUtil.GetFormattedErrorMessage(response?.GetError() as Exception) ?? "No response" } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false);
+                    LoggerService.Log(LogLevelEnum.INFO, "EVENT_QUEUED", new Dictionary<string, string> { { "eventName", eventName } });
+                } else {
+                    LoggerService.Log(LogLevelEnum.INFO, "EVENT_QUEUE_FULL", new Dictionary<string, string> { { "eventName", eventName } });
                 }
             }
             catch (Exception exception)
@@ -546,14 +537,30 @@ namespace VWOFmeSdk.Utils
                         { "Authorization", sdkKey },
                         { "Content-Type", "application/json" }
                     },
-                    ConstantsNamespace.Constants.HTTPS_PROTOCOL,
+                    SettingsManager.GetInstance().Protocol,
                     SettingsManager.GetInstance().Port,
                     NetworkManager.GetInstance().GetRetryConfig()
                 );
 
-                // Send the request using the enhanced Post method with queue system
-                var response = NetworkManager.GetInstance().Post(requestModel, flushCallback);
-                return response?.GetStatusCode() == 200;
+                // Enqueue POST request for async processing via channel queue
+                var queuedRequest = new QueuedPostRequest
+                {
+                    Request = requestModel,
+                    FlushCallback = flushCallback
+                };
+
+                // Enqueue the request to the channel - this is non-blocking
+                // Background worker will automatically process it when a thread is available
+                // ProcessQueueAsync will call PostAsync to execute the request
+                bool enqueued = PostRequestChannel.Channel.Writer.TryWrite(queuedRequest);
+                if (enqueued)
+                {
+                    LoggerService.Log(LogLevelEnum.INFO, "EVENT_QUEUED", new Dictionary<string, string> { { "eventName", "batch of " + payload.Count + " events" } });
+                } else {
+                    LoggerService.Log(LogLevelEnum.INFO, "EVENT_QUEUE_FULL", new Dictionary<string, string> { { "eventName", "batch of " + payload.Count + " events" } });
+                }
+                return enqueued;
+                
             }
             catch (Exception ex)
             {
@@ -832,7 +839,7 @@ namespace VWOFmeSdk.Utils
 
                 string lt = LogLevelEnum.INFO.ToString().ToLower();
 
-                if (response.GetStatusCode() != 200)
+                if (response.GetStatusCode() != ConstantsNamespace.Constants.HTTP_OK)
                 {
                     category = DebuggerCategoryEnum.NETWORK.GetValue();
                     msg_t = ConstantsNamespace.Constants.NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES;
@@ -956,9 +963,25 @@ namespace VWOFmeSdk.Utils
                     retryConfig
                 );            
 
-                NetworkManager.GetInstance().PostAsync(request);
-                // Assuming the POST request was successful, return a success indicator
-                return new { success = true, message = "Event sent successfully" };
+                // Enqueue POST request for async processing via channel queue
+                var queuedRequest = new QueuedPostRequest
+                {
+                    Request = request,
+                    FlushCallback = null
+                };
+
+                // Enqueue the request to the channel - this is non-blocking
+                // Background worker will automatically process it when a thread is available
+                // ProcessQueueAsync will call PostAsync to execute the request
+                bool enqueued = PostRequestChannel.Channel.Writer.TryWrite(queuedRequest);
+                if (enqueued)
+                {
+                    LoggerService.Log(LogLevelEnum.INFO, "EVENT_QUEUED", new Dictionary<string, string> { { "eventName", eventName } });
+                } else {
+                    LoggerService.Log(LogLevelEnum.INFO, "EVENT_QUEUE_FULL", new Dictionary<string, string> { { "eventName", eventName } });
+                }
+                
+                return enqueued;
             }
             catch (Exception ex)
             {
@@ -966,6 +989,26 @@ namespace VWOFmeSdk.Utils
                 LogManager.GetInstance().ErrorLog("NETWORK_CALL_FAILED", new Dictionary<string, string> { { "method", "POST" }, { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false );
 
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Completes the POST request channel and waits until all queued
+        /// requests have been processed by the background workers.
+        /// </summary>
+        public static async Task DrainPostRequestQueueAsync()
+        {
+            // Signal that no more items will be written
+            PostRequestChannel.Channel.Writer.TryComplete();
+
+            // Wait for the channel to be fully drained (all items read)
+            await PostRequestChannel.Channel.Reader.Completion.ConfigureAwait(false);
+
+            // Wait for all worker tasks to finish processing (including in-flight PostAsync calls)
+            var backgroundWorker = NetworkClient.GetBackgroundWorker();
+            if (backgroundWorker != null)
+            {
+                await backgroundWorker.WaitForCompletionAsync().ConfigureAwait(false);
             }
         }
     }

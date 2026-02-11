@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.17.0</Version>
+    <Version>1.19.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -87,6 +87,7 @@
     <!-- Packages -->
     <Compile Include="..\VWOFmeSdk\Packages\DecisionMaker\DecisionMaker.cs" Link="Packages\DecisionMaker\DecisionMaker.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Client\NetworkClient.cs" Link="Packages\NetworkLayer\Client\NetworkClient.cs" />
+    <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Client\PostRequestQueue.cs" Link="Packages\NetworkLayer\Client\PostRequestQueue.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Handlers\RequestHandler.cs" Link="Packages\NetworkLayer\Handlers\RequestHandler.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Manager\NetworkManager.cs" Link="Packages\NetworkLayer\Manager\NetworkManager.cs" />
     <Compile Include="..\VWOFmeSdk\Packages\NetworkLayer\Models\GlobalRequestModel.cs" Link="Packages\NetworkLayer\Models\GlobalRequestModel.cs" />
@@ -147,6 +148,7 @@
     <PackageReference Include="Identifiable" Version="4.0.0" />
     <PackageReference Include="murmurhash" Version="1.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

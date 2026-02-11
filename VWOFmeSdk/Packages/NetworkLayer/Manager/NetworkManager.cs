@@ -40,14 +40,29 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
 
         private GlobalRequestModel config;
         private NetworkClientInterface client;
-        private TaskFactory executorService;
         private Dictionary<string, object> retryConfig = ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG;
+        private int maxConcurrentThreads = ConstantsNamespace.Constants.DEFAULT_CONCURRENT_THREADS;
 
-        private NetworkManager()
+        public NetworkManager(int? maxConcurrentThreads = null)
         {
-            this.executorService = new TaskFactory(TaskScheduler.Default);
             this.retryConfig = ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG;
+            int defaultMinConcurrentThreads = ConstantsNamespace.Constants.DEFAULT_CONCURRENT_THREADS;
+            try
+            {
+                // Use provided value, otherwise fall back to logical processor count - 1
+                int desiredMaxConcurrentThreads = maxConcurrentThreads ?? ( Environment.ProcessorCount - 1);
+
+                // if desiredMaxConcurrentThreads is less than MIN_CONCURRENT_THREADS, use MIN_CONCURRENT_THREADS
+                // this will ensure that the maxConcurrentThreads is at least 1
+                this.maxConcurrentThreads = Math.Max(ConstantsNamespace.Constants.MIN_CONCURRENT_THREADS, desiredMaxConcurrentThreads);
+            }
+            catch (Exception)
+            {
+                // Fallback to a safe minimum if anything goes wrong
+                this.maxConcurrentThreads = defaultMinConcurrentThreads;
+            }
             this.config = new GlobalRequestModel(null, null, null, null);
+            instance = this;
         }
 
         public static NetworkManager GetInstance()
@@ -91,6 +106,7 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
             return this.config;
         }
 
+
         public RequestModel CreateRequest(RequestModel request)
         {
             var handler = new RequestHandler();
@@ -118,11 +134,15 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         }
 
         /// <summary>
-        /// Synchronously sends a POST request to the server.
+        /// Asynchronously sends a POST request to the server.
+        /// This method executes the request directly via the client.
         /// </summary>
         /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
-        /// <returns></returns>
-        public ResponseModel Post(RequestModel request, IFlushInterface flushCallback = null)
+        /// <param name="flushCallback">Optional callback for batch operations</param>
+        /// <param name="properties">Optional properties (unused, kept for compatibility)</param>
+        /// <param name="campaignInfo">Optional campaign info (unused, kept for compatibility)</param>
+        /// <returns>A ResponseModel containing the response data.</returns>
+        public ResponseModel PostAsync(RequestModel request, IFlushInterface flushCallback, Dictionary<string, string> properties = null, Dictionary<string, object> campaignInfo = null)
         {
             try
             {
@@ -132,7 +152,15 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                     return null;
                 }
 
-                return client.POST(request, flushCallback);
+                var response = client.POST(request, flushCallback);
+                if (response != null && response.GetStatusCode() >= ConstantsNamespace.Constants.HTTP_SUCCESS_MIN && response.GetStatusCode() <= ConstantsNamespace.Constants.HTTP_SUCCESS_MAX)
+                {
+                    if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
+                    {
+                        UsageStatsUtil.GetInstance().ClearUsageStats();
+                    }
+                }
+                return response;
             }
             catch (Exception error)
             {
@@ -142,34 +170,6 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
                 }
                 return null;
             }
-        }
-
-        /// <summary>
-        /// Asynchronously sends a POST request to the server.
-        /// </summary>
-        /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
-        public ResponseModel PostAsync(RequestModel request, Dictionary<string, string> properties = null, Dictionary<string, object> campaignInfo = null)
-        {
-            executorService.StartNew(() => 
-            {
-                try
-                {
-                    var response = Post(request);
-                    if (response != null && response.GetStatusCode() >= 200 && response.GetStatusCode() <= 299)
-                    {
-                        if (UsageStatsUtil.GetInstance().GetUsageStats().Count > 0)
-                        {
-                            UsageStatsUtil.GetInstance().ClearUsageStats();
-                        }
-                    }
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    return null;
-                }
-            });
-            return null;
         }
 
 
@@ -258,6 +258,11 @@ namespace VWOFmeSdk.Packages.NetworkLayer.Manager
         public Dictionary<string, object> GetRetryConfig()
         {
             return retryConfig;
+        }
+
+        public int GetMaxConcurrentThreads()
+        {
+            return maxConcurrentThreads;
         }
     }
 }

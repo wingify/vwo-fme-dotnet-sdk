@@ -41,12 +41,31 @@ namespace VWOFmeSdk.Models.User
         private bool isUsageStatsDisabled;
         private Dictionary<string, object> vwoMetaData = new Dictionary<string, object>();
         private Dictionary<string, object> retryConfig;
+        private int? maxConcurrentThreads;
+        private bool isBatchingDisabled;
+        private int? maxRequestQueueCapacity;
         private string proxyUrl = "";
 
         public Dictionary<string, object> RetryConfig
         {
             get { return retryConfig; }
             set { retryConfig = value ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG; }
+        }
+
+        public int? MaxConcurrentThreads
+        {
+            get { return maxConcurrentThreads; }
+            set { maxConcurrentThreads = value; }
+        }
+
+        /// <summary>
+        /// Capacity of the bounded channel used to queue POST requests.
+        /// If not provided (null) or invalid (<= 0), the SDK uses the default constant.
+        /// </summary>
+        public int? MaxRequestQueueCapacity
+        {
+            get { return maxRequestQueueCapacity; }
+            set { maxRequestQueueCapacity = value; }
         }
 
         public string ProxyUrl
@@ -139,6 +158,12 @@ namespace VWOFmeSdk.Models.User
         {
             get { return vwoMetaData; }
             set { vwoMetaData = value; }
+        }
+
+        public bool IsBatchingDisabled
+        {
+            get { return isBatchingDisabled; }
+            set { isBatchingDisabled = value; }
         }
     }
 }

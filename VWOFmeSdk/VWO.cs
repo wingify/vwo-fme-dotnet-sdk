@@ -58,6 +58,7 @@ namespace VWOFmeSdk
             }
 
             vwoBuilder
+                .SetMaxRequestQueueCapacity()
                 .SetLogger()
                 .SetSettingsManager()
                 .SetStorage()

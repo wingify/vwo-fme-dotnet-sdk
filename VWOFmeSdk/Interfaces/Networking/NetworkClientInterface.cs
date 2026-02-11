@@ -30,12 +30,6 @@ namespace VWOFmeSdk.Interfaces.Networking
         /// <returns>A ResponseModel containing the response data.</returns>
         ResponseModel GET(RequestModel request);
 
-        /// <summary>
-        /// Sends a POST request to the server.
-        /// </summary>
-        /// <param name="request">The RequestModel containing the URL, headers, and body of the POST request.</param>
-        /// <returns>A ResponseModel containing the response data.</returns>
-        ResponseModel POST(RequestModel request);
 
         /// <summary>
         /// Sends a POST request to the server with callback support.

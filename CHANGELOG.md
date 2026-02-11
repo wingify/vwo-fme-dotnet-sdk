@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-02-11
+
+### Added
+
+- Added `IsBatchingDisabled` parameter in `VWOInitOptions` to allow opting out of the default event batching mechanism.
+- Optimized event batching by enabling it by default with the following configuration:
+  - `EventsPerRequest`: 100
+  - `RequestTimeInterval`: 3 seconds
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "YOUR_SDK_KEY",
+    AccountId = YOUR_ACCOUNT_ID,
+    IsBatchingDisabled = true,  //false by default
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+```
+
+
+## [1.18.0] - 2026-01-29
+
+### Added
+
+- Added `MaxConcurrentThreads` initialization option to control the maximum number of concurrent network threads used by the SDK, with safe clamping based on the machine's logical processors.
+- Introduced a bounded channel–backed request queue, with capacity configurable via `MaxRequestQueueCapacity` on `VWOInitOptions`.
+- Enhanced graceful shutdown to drain the request queue and wait for all in-flight network calls.
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "YOUR_SDK_KEY",
+    AccountId = YOUR_ACCOUNT_ID,
+
+    // Controls how many worker tasks can process queued requests concurrently
+    MaxConcurrentThreads = 10, // defaults to Environment.ProcessorCount - 1
+
+    // Controls how many requests can be buffered in-memory before dropping oldest
+    MaxRequestQueueCapacity = 20000 // defaults to 10,000
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+```
+
 ## [1.17.0] - 2026-02-05
 
 ### Added

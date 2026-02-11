@@ -70,7 +70,7 @@ namespace VWOFmeSdk.Utils
                 );
 
                 ResponseModel response = networkInstance.Get(request);
-                if (response.GetStatusCode() != 200)
+                if (response.GetStatusCode() != ConstantsNamespace.Constants.HTTP_OK)
                 {
                     LogManager.GetInstance().ErrorLog(
                         "ERROR_SETTING_SEGMENTATION_CONTEXT", 

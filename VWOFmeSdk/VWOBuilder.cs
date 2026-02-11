@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using VWOFmeSdk.Models.User;
 using VWOFmeSdk.Services;
 using VWOFmeSdk.Utils;
+using VWOFmeSdk.Packages.NetworkLayer.Client;
 using VWOFmeSdk.Packages.NetworkLayer.Manager;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Core;
@@ -75,19 +76,29 @@ namespace VWOFmeSdk
         }
 
         /// <summary>
+        /// Sets the maximum request queue capacity.
+        /// </summary>
+        /// <returns>The instance of this builder.</returns>
+        public VWOBuilder SetMaxRequestQueueCapacity()
+        {
+            PostRequestChannel.Initialize(this.options?.MaxRequestQueueCapacity);
+            return this;
+        }
+
+        /// <summary>
         /// Sets the network manager with the provided client and development mode options.
         /// </summary>
         /// <returns>The VWOBuilder instance.</returns>
         public VWOBuilder SetNetworkManager()
         {
-            NetworkManager networkInstance = NetworkManager.GetInstance();
+            NetworkManager networkInstance = new NetworkManager(this.options?.MaxConcurrentThreads);
             if (this.options != null && this.options.NetworkClientInterface != null)
             {
                 networkInstance.AttachClient(this.options.NetworkClientInterface, this.options.RetryConfig ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG);
             }
             else
             {
-                networkInstance.AttachClient(null, this.options.RetryConfig ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG    );
+                networkInstance.AttachClient(null, this.options.RetryConfig ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG);
             }
             networkInstance.GetConfig().SetDevelopmentMode(false);
             LoggerService.Log(LogLevelEnum.DEBUG, "SERVICE_INITIALIZED", new Dictionary<string, string>
@@ -364,12 +375,26 @@ namespace VWOFmeSdk
                 vwoClient.BatchEventQueue = batchEventQueue; // Link the BatchEventQueue to the vwoClient
                 IsBatchingUsed = true;
 
-                LoggerService.Log(LogLevelEnum.DEBUG,"Event Batching initialized successfully in SDK.");
+                LoggerService.Log(LogLevelEnum.DEBUG,"EVENT_BATCHING_INITIALIZED", null);
+            } 
+            else if (this.options.IsBatchingDisabled)
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG,"EVENT_BATCHING_NOT_INITIALIZED", null);
+                IsBatchingUsed = false;
             }
             else
             {
-                LoggerService.Log(LogLevelEnum.DEBUG,"Event Batching functionality not initialized. SDK batching is disabled.");
-                IsBatchingUsed = false;
+                // intialize batchEventQueue with default configuration
+                batchEventQueue = new BatchEventQueue(
+                    ConstantsNamespace.Constants.DEFAULT_EVENTS_PER_REQUEST,
+                    ConstantsNamespace.Constants.DEFAULT_REQUEST_TIME_INTERVAL,
+                    this.options.AccountId ?? 0,
+                    this.options.SdkKey,
+                    null
+                );
+                vwoClient.BatchEventQueue = batchEventQueue;
+                LoggerService.Log(LogLevelEnum.DEBUG, "DEFAULT_EVENT_BATCHING_INITIALIZED", null);
+                IsBatchingUsed = true;
             }
 
             return this;

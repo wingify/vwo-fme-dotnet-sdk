@@ -84,8 +84,16 @@ namespace VWOFmeSdk.Utils
                 // Create the payload with required fields
                 var payload = NetworkUtil.GetSDKUsageStatsEventPayload(EventEnum.VWO_USAGE_STATS_EVENT.GetValue(), usageStatsAccountId);
 
-                // Send the constructed properties and payload as a POST request
-                NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_USAGE_STATS_EVENT.GetValue());
+                // Check if batching is available through VWO instance
+                var vwoInstance = VWO.GetInstance();
+                if (vwoInstance?.BatchEventQueue != null)
+                {
+                    vwoInstance.BatchEventQueue.Enqueue(payload);
+                }
+                else
+                {
+                    NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_USAGE_STATS_EVENT.GetValue());
+                }
             }
             catch (Exception ex)
             {

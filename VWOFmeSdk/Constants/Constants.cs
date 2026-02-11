@@ -31,7 +31,7 @@ namespace VWOFmeSdk.Constants
 
         public const int SEED_VALUE = 1;
         public const int MAX_EVENTS_PER_REQUEST = 5000;
-        public const int DEFAULT_REQUEST_TIME_INTERVAL = 600; // 10 * 60 (secs) = 600 secs i.e. 10 minutes
+        public const int DEFAULT_REQUEST_TIME_INTERVAL = 3; // 3 seconds
         public const int DEFAULT_EVENTS_PER_REQUEST = 100;
         public const string SDK_NAME = "vwo-fme-dotnet-sdk";
         public const int SETTINGS_EXPIRY = 10000000; // Changed from long to int
@@ -51,6 +51,10 @@ namespace VWOFmeSdk.Constants
 
         // Network retry constants
         public const int MAX_RETRIES = 3;
+        public const int DEFAULT_MAX_REQUEST_QUEUE_CAPACITY = 25000;
+        public const int DEFAULT_CONCURRENT_THREADS = 2;
+        public const int MIN_CONCURRENT_THREADS = 1;
+
         // Retry configuration keys
         public const string RETRY_SHOULD_RETRY = "shouldRetry";
         public const string RETRY_MAX_RETRIES = "maxRetries";
@@ -74,5 +78,12 @@ namespace VWOFmeSdk.Constants
         public const string NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES = "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES";
         public const string NETWORK_CALL_SUCCESS_WITH_RETRIES = "NETWORK_CALL_SUCCESS_WITH_RETRIES";
         public const string IMPACT_ANALYSIS = "IMPACT_ANALYSIS";
+
+        // HTTP status code constants
+        public const int HTTP_OK = 200;
+        public const int HTTP_BAD_REQUEST = 400;
+        public const int HTTP_SUCCESS_MIN = 200;
+        public const int HTTP_SUCCESS_MAX = 299;
+        public const int HTTP_SUCCESS_UPPER_BOUND = 300;
     }
 }

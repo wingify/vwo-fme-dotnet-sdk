@@ -362,16 +362,21 @@ namespace VWOFmeSdk
         {
             try {
                 LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", ApiEnum.SHUTDOWN.GetValue() } });
-                this.vwoBuilder?.StopPolling();
 
-                //if batching enabled, call the flushEvents method
+                // stop polling thread
+                this.vwoBuilder?.StopPolling();
+                LoggerService.Log(LogLevelEnum.INFO, "POLLING_CLEARED", null);
+
+                // if batching enabled, call the flushEvents method
                 if (this.vwoBuilder.IsBatchingUsed)
                 {
-                    this.batchEventQueue.FlushAndClearTimer(shouldWaitForFlush: true);
-                    LoggerService.Log(LogLevelEnum.INFO, "Successfully flushed BatchQueue, removed timers and cleared polling");
-                    return;
+                    this.batchEventQueue.FlushAndClearTimer();
+                    LoggerService.Log(LogLevelEnum.INFO, "BATCH_QUEUE_FLUSHED", null);
                 }
-                LoggerService.Log(LogLevelEnum.INFO, "Successfully cleared polling");
+
+                // ensure channel is fully drained and all network calls are completed
+                NetworkUtil.DrainPostRequestQueueAsync().GetAwaiter().GetResult();
+                LoggerService.Log(LogLevelEnum.INFO, "NETWORK_REQUEST_CHANNEL_DRAINED", null);
             } 
             catch (Exception exception)
             {
@@ -392,7 +397,8 @@ namespace VWOFmeSdk
                 
                 if (this.batchEventQueue != null)
                 {
-                    return this.batchEventQueue.FlushAndClearTimer();
+                    this.batchEventQueue.FlushAndClearTimer();
+                    return true;
                 }
                 else
                 {

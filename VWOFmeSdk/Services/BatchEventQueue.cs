@@ -18,8 +18,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading;
-using System.Threading.Tasks;
 using VWOFmeSdk.Utils;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.Logger.Core;
@@ -32,11 +32,11 @@ namespace VWOFmeSdk.Services
 {
     public class BatchEventQueue
     {
-        internal Queue<Dictionary<string, object>> batchQueue = new Queue<Dictionary<string, object>>();
+        internal ConcurrentQueue<Dictionary<string, object>> batchQueue = new ConcurrentQueue<Dictionary<string, object>>();
         internal int eventsPerRequest = ConstantsNamespace.Constants.DEFAULT_EVENTS_PER_REQUEST ;
         internal int requestTimeInterval = ConstantsNamespace.Constants.DEFAULT_REQUEST_TIME_INTERVAL;
         internal Timer timer;
-        internal bool isBatchProcessing = false;
+        private readonly object _lock = new object();
         private readonly int accountId;
         private readonly string sdkKey;
         private IFlushInterface flushCallback;
@@ -49,14 +49,32 @@ namespace VWOFmeSdk.Services
             this.sdkKey = sdkKey;
             this.flushCallback = flushCallback;
 
-            CreateNewBatchTimer();
             LoggerService.Log(LogLevelEnum.DEBUG, "BatchEventQueue initialized with eventsPerRequest: " + eventsPerRequest + " and requestTimeInterval: " + requestTimeInterval);
         }
 
+        /// <summary>
+        /// Enqueues an event to the batch queue.
+        /// </summary>
+        /// <param name="eventData">The event data to enqueue.</param>
         public void Enqueue(Dictionary<string, object> eventData)
         {
             batchQueue.Enqueue(eventData);
             LoggerService.Log(LogLevelEnum.DEBUG, $"Event added to queue. Current queue size: {batchQueue.Count}");
+
+            // Lazily create the timer when the first event is enqueued
+            // Check outside the lock first to avoid unnecessary contention
+            if(timer == null && !batchQueue.IsEmpty)
+            {
+                lock (_lock)
+                {
+                    // Check again inside the lock to handle the race condition
+                    // where multiple threads might have passed the first check
+                    if (timer == null && !batchQueue.IsEmpty)
+                    {
+                        CreateNewBatchTimer();
+                    }
+                }
+            }
 
             // If batch size reaches the limit, trigger flush
             if (batchQueue.Count >= eventsPerRequest)
@@ -66,6 +84,9 @@ namespace VWOFmeSdk.Services
             }
         }
 
+        /// <summary>
+        /// Creates a new timer for batch flushing.
+        /// </summary>
         private void CreateNewBatchTimer()
         {
             timer = new Timer(_ => Flush(), null, requestTimeInterval * 1000, requestTimeInterval * 1000);
@@ -75,167 +96,124 @@ namespace VWOFmeSdk.Services
         /// Flushes the batch queue by sending all events to the server.
         /// </summary>
         /// <returns>True if events were successfully sent, false if skipped or failed to send</returns>
-        public bool Flush(bool isManualFlush = false, bool shouldWaitForFlush = false)
+        public void Flush(bool isManualFlush = false)
         {
-            if (isManualFlush)
+            lock (_lock)
             {
-                if (batchQueue.Count > 0)
+                if (isManualFlush)
                 {
-                    LoggerService.Log(LogLevelEnum.DEBUG, $"Manual flush initiated with queue size: {batchQueue.Count}");
-
-                    // Create a temporary list to hold the events for the batch
-                    List<Dictionary<string, object>> eventsToSend = new List<Dictionary<string, object>>(batchQueue);
-                    batchQueue.Clear(); // Clear the queue after taking a snapshot
-
-                    // Log before sending batch events
-                    LoggerService.Log(LogLevelEnum.DEBUG, $"Flushing {eventsToSend.Count} events manually.");
-                    bool isSentSuccessfully = false;
-
-                    var flushTask = Task.Run(() =>
+                    if (!batchQueue.IsEmpty)
                     {
-                        try
-                        {
-                            isSentSuccessfully = SendBatchEvents(eventsToSend);
-                            if (isSentSuccessfully)
-                            {
-                                LoggerService.Log(LogLevelEnum.INFO, $"Batch flush successful. Sent {eventsToSend.Count} events.");
-                            }
-                            else
-                            {
-                                LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
-                                
-                                // Re-enqueue events in case of failure
-                                foreach (var eventItem in eventsToSend)
-                                {
-                                    batchQueue.Enqueue(eventItem);
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
-                            isSentSuccessfully = false;
-                        }
-                    });
+                        int queueSize = batchQueue.Count;
+                        LoggerService.Log(LogLevelEnum.DEBUG, $"Manual flush initiated with queue size: {queueSize}");
 
-                    if (shouldWaitForFlush) {
-                        flushTask.Wait();
+                        // In manual flush, flush all the events present in the queue at this moment in a single batch
+                        var eventsToSend = DequeueBatch(queueSize);
+
+                        LoggerService.Log(LogLevelEnum.INFO, $"Flushing {eventsToSend.Count} events manually.");
+
+                        SendBatchEvents(eventsToSend);
+                           
+                        // Stop the timer only if the queue is empty after manual flush
+                        if (batchQueue.IsEmpty)
+                        {
+                            StopTimer();
+                        }
+
                     }
-                    // Clear the timer and set it to null
-                    if (timer != null)
+                    else
                     {
-                        timer.Dispose();
-                        timer = null;
+                        // If the queue is empty during a manual flush
+                        LoggerService.Log(LogLevelEnum.DEBUG, "Queue is empty. No events to flush.");
+                        // Stop the timer if there are no events
+                        StopTimer();
                     }
-                    CreateNewBatchTimer();
-
-                    return isSentSuccessfully;
                 }
                 else
-                {
-                    // If the queue is empty during a manual flush
-                    LoggerService.Log(LogLevelEnum.DEBUG, "Queue is empty. No events to flush.");
-                    return true;
-                }
-            }
+                {   
+                    //flush at most eventsPerRequest events in a single batch
+                    List<Dictionary<string, object>> eventsToSend = DequeueBatch(eventsPerRequest);
 
+                    SendBatchEvents(eventsToSend);
             
-            if(!isBatchProcessing) 
-            {
-                isBatchProcessing = true;
-
-                // Create a temporary list to hold the events for the batch
-                List<Dictionary<string, object>> eventsToSend = new List<Dictionary<string, object>>(batchQueue);
-                batchQueue.Clear(); // Clear the queue after taking a snapshot
-
-                // Log before sending batch events
-                LoggerService.Log(LogLevelEnum.DEBUG, $"Flushing {eventsToSend.Count} events.");
-
-                bool isSentSuccessfully = false;
-
-                // Send the batch events in a background task
-                Task.Run(() =>
-                {
-                    try
+                    // Stop the timer only if the queue is empty after this automatic flush
+                    if (batchQueue.IsEmpty)
                     {
-                        isSentSuccessfully = SendBatchEvents(eventsToSend);
-                        if (isSentSuccessfully)
-                        {
-                            LoggerService.Log(LogLevelEnum.INFO, $"Batch flush successful. Sent {eventsToSend.Count} events.");
-                            if (batchQueue.Count > 0)
-                            {
-                                isSentSuccessfully = Flush(true);
-                            }
-                        }
-                        else
-                        {
-                            LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
-                            // Re-enqueue events in case of failure
-                            foreach (var eventItem in eventsToSend)
-                            {
-                                batchQueue.Enqueue(eventItem);
-                            }
-                            isSentSuccessfully = false;
-                        }
+                        StopTimer();
                     }
-                    catch (Exception ex)
-                    {
-                        LogManager.GetInstance().ErrorLog("BATCH_FLUSH_FAILED", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(ex) } }, new Dictionary<string, object> { { "an", ApiEnum.BATCH_FLUSH.GetValue() } });
-                        isSentSuccessfully = false;
-                    }
-                    finally
-                    {
-                        isBatchProcessing = false;
-                    }
-                });
-                // Clear the timer and set it to null
-                if (timer != null)
-                {
-                    timer.Dispose();
-                    timer = null;
+
                 }
-                CreateNewBatchTimer();
-
-                return isSentSuccessfully;
-            }
-            else {
-                // Prevent flushing if another flush is in progress
-                LoggerService.Log(LogLevelEnum.DEBUG, "Flush skipped. Another flush is already in progress.");
-                return false;
             }
         }
 
         /// <summary>
         /// Flushes the queue and clears the timer
         /// </summary>
-        /// <returns>True if flush was successful, false otherwise</returns>
-        public bool FlushAndClearTimer(bool shouldWaitForFlush = false)
+        public void FlushAndClearTimer()
         {
-            bool flushResult = false;
-
             // First, flush the events manually
-            flushResult = Flush(true, shouldWaitForFlush);
-            if (shouldWaitForFlush) {
-                if (timer != null)
+            Flush(true);
+            // Explicitly clear the timer irrespective of queue state (used during shutdown)
+            StopTimer(force: true);
+        }
+
+        /// <summary>
+        /// Dequeues a batch of events from the queue.
+        /// </summary>
+        /// <param name="maxBatchSize">The maximum number of events to dequeue </param>
+        /// <returns>A list of events to dequeue.</returns>
+        private List<Dictionary<string, object>> DequeueBatch(int maxBatchSize)
+        {
+            var eventsToSend = new List<Dictionary<string, object>>(maxBatchSize);
+
+            // Dequeue up to maxBatchSize events from the queue
+            for (int i = 0; i < maxBatchSize; i++)
+            {
+                if (batchQueue.TryDequeue(out var eventItem))
                 {
-                    timer.Dispose();
-                    timer = null;
+                    eventsToSend.Add(eventItem);
+                }
+                else
+                {
+                    break;
                 }
             }
 
-            return flushResult;
+            return eventsToSend;
         }
 
-        private bool SendBatchEvents(List<Dictionary<string, object>> events)
+        /// <summary>
+        /// Stops the timer if it is running.
+        /// </summary>
+        /// <param name="force">If true, stops the timer even if the queue is not empty.</param>
+        private void StopTimer(bool force = false)
+        {
+            lock (_lock)
+            {
+                if (timer != null)
+                {
+                    if (force || batchQueue.IsEmpty)
+                    {
+                        timer.Dispose();
+                        timer = null;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends a batch of events to the server.
+        /// </summary>
+        /// <param name="events">The batch of events to send.</param>
+        private void SendBatchEvents(List<Dictionary<string, object>> events)
         {
             try
             {
-                bool isSentSuccessfully = NetworkUtil.SendPostBatchRequest(events, accountId, sdkKey, flushCallback);
-                return isSentSuccessfully;
+                NetworkUtil.SendPostBatchRequest(events, accountId, sdkKey, flushCallback);
             }
             catch (Exception ex)
             {
-                return false;
+                LoggerService.Log(LogLevelEnum.ERROR, "BATCH_FLUSH_FAILED", new Dictionary<string, string> { { "err", ex.Message } });
             }
         }
     }

@@ -97,6 +97,10 @@ To customize the SDK further, additional parameters can be passed to the `init()
 | `PollInterval`         | Time interval (in milliseconds) for fetching updates from VWO servers.                                              | No           | `int`           | `60000`                         |
 | `Storage`              | Custom storage mechanism for persisting user decisions and campaign data.                                           | No           | `IStorage`      | See [Storage](#storage) section |
 | `Logger`               | Configure log levels and transport for debugging purposes.                                                          | No           | `ILogger`       | See [Logger](#logger) section   |
+| `Integrations`          | Callback function for integrating with third-party analytics services.                                             | No           | `Action`        | See [Integrations](#integrations) section |
+| `MaxConcurrentThreads`  | Maximum number of concurrent network worker threads used for processing queued requests.                      | No           | `int?`          | See [Network concurrency and queue configuration](#network-concurrency-and-queue-configuration)                             |
+| `MaxRequestQueueCapacity` | Maximum number of queued requests buffered in memory before oldest events are dropped.                    | No           | `int?`          | See [Network concurrency and queue configuration](#network-concurrency-and-queue-configuration) |
+
 | `Integrations`         | Callback function for integrating with third-party analytics services.                                              | No           | `Action`        | See [Integrations](#integrations) section |
 | `ProxyUrl`         | Custom proxy URL for redirecting all SDK network requests (settings, tracking, etc.) through your own proxy server | No           | `string`        | See [Proxy](#proxy) section |
 
@@ -442,6 +446,31 @@ var vwoInitOptions3 = new VWOInitOptions
 var vwoClient3 = VWO.Init(vwoInitOptions3);
 
 ```
+---
+
+### Network concurrency and queue configuration
+
+You can control how many concurrent network threads are used and how many requests are buffered in the internal queue using `MaxConcurrentThreads` and `MaxRequestQueueCapacity`:
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "32-alpha-numeric-sdk-key",
+    AccountId = 123456,
+
+    // Controls how many worker tasks can process queued requests concurrently
+    MaxConcurrentThreads = 10, // defaults to Environment.ProcessorCount - 1
+
+    // Controls how many requests can be buffered in-memory before dropping oldest
+    MaxRequestQueueCapacity = 20000 // defaults to 10,000
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+```
+
 ---
 
 ### Version History
