@@ -25,7 +25,7 @@ namespace VWOFmeSdk.Packages.Logger.Core
 {
     public class LogTransportManager : Logger, LogTransport
     {
-        private List<LogTransport> transports = new List<LogTransport>();
+        private List<Dictionary<string, object>> transports = new List<Dictionary<string, object>>();
         private Dictionary<string, object> config;
 
         public LogTransportManager(Dictionary<string, object> config)
@@ -33,15 +33,28 @@ namespace VWOFmeSdk.Packages.Logger.Core
             this.config = config;
         }
 
-        public void AddTransport(LogTransport transport)
+        public void AddTransport(Dictionary<string, object> transport)
         {
             transports.Add(transport);
         }
 
-        public bool ShouldLog(string transportLevel, string configLevel)
+        public bool ShouldLog(string transportLevel, object configLevel)
         {
+            string level;
+            if (configLevel == null || string.IsNullOrEmpty(configLevel.ToString()))
+            {
+                level = config.ContainsKey("level") ? config["level"].ToString() : LogLevelEnum.ERROR.ToString();
+            }
+            else
+            {
+                level = configLevel.ToString();
+            }
+            if (string.IsNullOrEmpty(level))
+            {
+                level = config.ContainsKey("level") ? config["level"].ToString() : LogLevelEnum.ERROR.ToString();
+            }
             int targetLevel = (int)Enum.Parse(typeof(LogLevelEnum), transportLevel.ToUpper());
-            int desiredLevel = (int)Enum.Parse(typeof(LogLevelEnum), configLevel.ToUpper());
+            int desiredLevel = (int)Enum.Parse(typeof(LogLevelEnum), level.ToUpper());
             return targetLevel >= desiredLevel;
         }
 
@@ -74,11 +87,30 @@ namespace VWOFmeSdk.Packages.Logger.Core
         {
             foreach (var transport in transports)
             {
+                // get the log message builder
                 LogMessageBuilder logMessageBuilder = new LogMessageBuilder(config, transport);
+                // format the message
                 string formattedMessage = logMessageBuilder.FormatMessage(level, message);
-                if (ShouldLog(level.ToString(), LogManager.GetInstance().GetLevel().ToString()))
+                // get the transport level
+                object trasportLevel = transport.ContainsKey("level") ? transport["level"] : null;
+                // check if the transport level should log the message
+                if (ShouldLog(level.ToString(), trasportLevel))
                 {
-                    transport.Log(level, formattedMessage);
+                    object logHandler = transport.ContainsKey("log") ? transport["log"] : null;
+                    // if the log handler is a custom transport, log the message
+                    if (logHandler is LogTransport customTransport)
+                    {
+                        customTransport.Log(level, formattedMessage);
+                    }
+                    else
+                    {
+                        // if the log handler is a default transport, log the message
+                        object defaultLogHandler = transport.ContainsKey("defaultTransport") ? transport["defaultTransport"] : null;
+                        if (defaultLogHandler is LogTransport defaultTransport)
+                        {
+                            defaultTransport.Log(level, formattedMessage);
+                        }
+                    }
                 }
             }
         }

@@ -108,10 +108,7 @@ namespace VWOFmeSdk.Packages.Logger.Core
         /// <param name="transport"></param>
         public void AddTransport(Dictionary<string, object> transport)
         {
-            if (transport.ContainsKey("defaultTransport") && transport["defaultTransport"] is LogTransport)
-            {
-                transportManager.AddTransport((LogTransport)transport["defaultTransport"]);
-            }
+            transportManager.AddTransport(transport);
         }
 
         /// <summary>

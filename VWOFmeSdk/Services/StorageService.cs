@@ -44,9 +44,19 @@ namespace VWOFmeSdk.Services
                 return null;
             }
 
-            try
+           try
             {
-                return storageInstance.Get(featureKey, context.Id) as Dictionary<string, object>;
+                var result = storageInstance.Get(featureKey, context.Id);
+                if (result == null)
+                {
+                    return null;
+                }
+
+                // Normalize the returned data to handle any JSON library the customer may use.
+                // Serialize the result to a JSON string
+                string jsonString = System.Text.Json.JsonSerializer.Serialize(result);
+                // Deserialize the JSON string to a dictionary
+                return JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString);
             }
             catch (System.Exception e)
             {

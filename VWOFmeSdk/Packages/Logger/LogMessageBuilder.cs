@@ -18,7 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using VWOFmeSdk.Interfaces.Logger;
 using VWOFmeSdk.Packages.Logger.Enums;
 
 namespace VWOFmeSdk.Packages.Logger
@@ -26,11 +25,11 @@ namespace VWOFmeSdk.Packages.Logger
     public class LogMessageBuilder
     {
         private Dictionary<string, object> loggerConfig;
-        private LogTransport transport;
+        private Dictionary<string, object> transport;
         private string prefix;
         private string dateTimeFormat;
 
-        public LogMessageBuilder(Dictionary<string, object> loggerConfig, LogTransport transport)
+        public LogMessageBuilder(Dictionary<string, object> loggerConfig, Dictionary<string, object> transport)
         {
             this.loggerConfig = loggerConfig;
             this.transport = transport;

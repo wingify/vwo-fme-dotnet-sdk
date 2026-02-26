@@ -96,7 +96,7 @@ To customize the SDK further, additional parameters can be passed to the `init()
 | `AccountId`            | VWO Account ID for authentication.                                                                                 | Yes          | `int`           | `123456`                        |
 | `PollInterval`         | Time interval (in milliseconds) for fetching updates from VWO servers.                                              | No           | `int`           | `60000`                         |
 | `Storage`              | Custom storage mechanism for persisting user decisions and campaign data.                                           | No           | `IStorage`      | See [Storage](#storage) section |
-| `Logger`               | Configure log levels and transport for debugging purposes.                                                          | No           | `ILogger`       | See [Logger](#logger) section   |
+| `Logger`               | Configure log levels and transport for debugging purposes.                                                          | No           | `Dictionary<string, object>` | See [Logger](#logger) section   |
 | `Integrations`          | Callback function for integrating with third-party analytics services.                                             | No           | `Action`        | See [Integrations](#integrations) section |
 | `MaxConcurrentThreads`  | Maximum number of concurrent network worker threads used for processing queued requests.                      | No           | `int?`          | See [Network concurrency and queue configuration](#network-concurrency-and-queue-configuration)                             |
 | `MaxRequestQueueCapacity` | Maximum number of queued requests buffered in memory before oldest events are dropped.                    | No           | `int?`          | See [Network concurrency and queue configuration](#network-concurrency-and-queue-configuration) |
@@ -362,12 +362,23 @@ var vwoInitOptions = new VWOInitOptions
 VWO by default logs all `ERROR` level messages to your server console.
 To gain more control over VWO's logging behaviour, you can use the `logger` parameter in the `init` configuration.
 
+The `Logger` property accepts a `Dictionary<string, object>` with the following keys:
+
 | **Parameter** | **Description**                        | **Required** | **Type** | **Example**           |
 | ------------- | -------------------------------------- | ------------ | -------- | --------------------- |
-| `level`       | Log level to control verbosity of logs | Yes          | String   | `DEBUG`               |
-| `prefix`      | Custom prefix for log messages         | No           | String   | `'CUSTOM LOG PREFIX'` |
-| `transport`   | Custom logger implementation           | No           | Object   | See example below     |
+| `level`       | Log level to control verbosity of logs | Yes          | `string`    | `"DEBUG"`             |
+| `prefix`      | Custom prefix for log messages  | No           | `string`    | `"CUSTOM LOG PREFIX"` |
+| `transports`   | Custom logger transport implementations            | No           | `List<Dictionary<string, object>>`     | See example below     |
 
+Each transport in the `transports` list is a `Dictionary<string, object>` that supports these keys:
+
+| **Key**             | **Description**                                                              | **Required** | **Type**        |
+| ------------------- | ---------------------------------------------------------------------------- | ------------ | --------------- |
+| `level`             | Per-transport log level filter (overrides global level)                      | No           | `string`        |
+| `log`               | A `LogTransport` implementation that receives **raw** (unformatted) messages | No           | `LogTransport`  |
+| `defaultTransport`  | A `LogTransport` implementation that receives **formatted** messages         | No           | `LogTransport`  |
+
+Each transport dictionary should contain either `log` or `defaultTransport` (not both). Use `log` when you want full control over formatting, or `defaultTransport` to receive pre-formatted messages with timestamp, level, and prefix.
 
 #### Example 1: Set log level to control verbosity of logs
 
@@ -376,10 +387,7 @@ var vwoInitOptions1 = new VWOInitOptions
 {
     SdkKey = "32-alpha-numeric-sdk-key",
     AccountId = 123456,
-    Logger = new Logger
-    {
-        Level = "DEBUG"
-    }
+    Logger = new Dictionary<string, object> { { "level", "DEBUG" } }
 };
 var vwoClient1 = VWO.Init(vwoInitOptions1);
 ```
@@ -391,18 +399,18 @@ var vwoInitOptions2 = new VWOInitOptions
 {
     SdkKey = "32-alpha-numeric-sdk-key",
     AccountId = 123456,
-    Logger = new Logger
+    Logger = new Dictionary<string, object>
     {
-        Level = "DEBUG",
-        Prefix = "CUSTOM LOG PREFIX"
+        { "level", "DEBUG" },
+        { "prefix", "CUSTOM LOG PREFIX" }
     }
 };
 var vwoClient2 = VWO.Init(vwoInitOptions2);
 ```
 
-#### Example 3: Implement custom transport to handle logs your way
+#### Example 3: Implement custom transports to handle logs your way
 
-The `transport` parameter allows you to implement custom logging behavior by providing your own logging functions. You can define handlers for different log levels (`debug`, `info`, `warn`, `error`, `trace`) to process log messages according to your needs.
+The `transports` key allows you to implement custom logging behavior by providing your own `LogTransport` implementations. Each transport can have its own log level filter, so you can route different severity levels to different destinations.
 
 For example, you could:
 
@@ -412,39 +420,69 @@ For example, you could:
 - Filter or transform log messages
 - Route different log levels to different destinations
 
-The transport object should implement handlers for the log levels you want to customize. Each handler receives the log message as a parameter.
+First, create classes that implement the `LogTransport` interface:
 
 ```csharp
+using VWOFmeSdk.Interfaces.Logger;
+using VWOFmeSdk.Packages.Logger.Enums;
 
+public class ErrorLogTransport : LogTransport
+{
+    public void Log(LogLevelEnum level, string message)
+    {
+        Console.Error.WriteLine("Error: " + message);
+    }
+}
+
+public class InfoLogTransport : LogTransport
+{
+    public void Log(LogLevelEnum level, string message)
+    {
+        Console.WriteLine("Info: " + message);
+    }
+}
+
+public class DebugLogTransport : LogTransport
+{
+    public void Log(LogLevelEnum level, string message)
+    {
+        Console.WriteLine("Debug: " + message);
+    }
+}
+```
+
+Then pass them as transports with per-level filtering:
+
+```csharp
 var vwoInitOptions3 = new VWOInitOptions
 {
     SdkKey = "32-alpha-numeric-sdk-key",
     AccountId = 123456,
-    Logger = new Logger
+    Logger = new Dictionary<string, object>
     {
-        Level = "DEBUG",
-        Transports = new List<LogTransport>
-        {
-            new LogTransport
+        { "level", "DEBUG" },
+        { "transports", new List<Dictionary<string, object>>
             {
-                Level = "DEBUG",
-                LogHandler = (msg, level) => Console.WriteLine($"DEBUG: {msg}")
-            },
-            new LogTransport
-            {
-                Level = "INFO",
-                LogHandler = (msg, level) => Console.WriteLine($"INFO: {msg}")
-            },
-            new LogTransport
-            {
-                Level = "ERROR",
-                LogHandler = (msg, level) => Console.WriteLine($"ERROR: {msg}")
+                new Dictionary<string, object>
+                {
+                    { "level", "ERROR" },
+                    { "log", new ErrorLogTransport() }
+                },
+                new Dictionary<string, object>
+                {
+                    { "level", "INFO" },
+                    { "log", new InfoLogTransport() }
+                },
+                new Dictionary<string, object>
+                {
+                    { "level", "DEBUG" },
+                    { "log", new DebugLogTransport() }
+                }
             }
         }
     }
 };
 var vwoClient3 = VWO.Init(vwoInitOptions3);
-
 ```
 ---
 

@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-02-26
+
+### Added
+
+- Added support to add multiple `transports` in logger.
+
+```csharp
+using VWOFmeSdk.Interfaces.Logger;
+using VWOFmeSdk.Packages.Logger.Enums;
+
+public class CustomLogTransport : LogTransport
+{
+    public void Log(LogLevelEnum level, string message)
+    {
+        // your custom logging logic here
+    }
+}
+
+var logger = new Dictionary<string, object>
+{
+    { "level", "DEBUG" },
+    { "transports", new List<Dictionary<string, object>>
+        {
+            new Dictionary<string, object>
+            {
+                { "level", "DEBUG" }, // optional: per-transport level filter, defaults to global level
+                { "log", new CustomLogTransport() }
+            }
+        }
+    }
+};
+
+var vwoInitOptions = new VWOInitOptions
+{
+    SdkKey = "YOUR_SDK_KEY",
+    AccountId = YOUR_ACCOUNT_ID,
+    Logger = logger
+};
+
+var vwoInstance = VWO.Init(vwoInitOptions);
+```
+
+
+
 ## [1.19.0] - 2026-02-11
 
 ### Added
