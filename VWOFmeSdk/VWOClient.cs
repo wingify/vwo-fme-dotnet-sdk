@@ -166,6 +166,16 @@ namespace VWOFmeSdk
                     getFlag.SetIsEnabled(false);
                     return getFlag;
                 }
+                  
+                // Check if "bucketingSeed" is present in the context and handle validation
+                if(context.BucketingSeed != null)
+                {
+                    if (!DataTypeUtil.IsString(context.BucketingSeed) || string.IsNullOrWhiteSpace(context.BucketingSeed))
+                    {
+                        LogManager.GetInstance().ErrorLog("INVALID_BUCKETING_SEED", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } }, false);
+                        context.BucketingSeed = null;
+                    }
+                }
 
                 return GetFlagAPI.GetFlag(featureKey, this.processedSettings, context, hooksManager);
             }

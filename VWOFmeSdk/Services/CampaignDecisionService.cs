@@ -27,6 +27,7 @@ using VWOFmeSdk.Packages.DecisionMaker;
 using VWOFmeSdk.Packages.Logger.Enums;
 using VWOFmeSdk.Packages.SegmentationEvaluator.Core;
 using Newtonsoft.Json;
+using VWOFmeSdk.Utils;
 
 namespace VWOFmeSdk.Services
 {
@@ -35,14 +36,18 @@ namespace VWOFmeSdk.Services
         /// <summary>
         /// Check if user is part of campaign
         /// </summary>
-        /// <param name="userId"></param>
+        /// <param name="context"></param>
         /// <param name="campaign"></param>
-        public bool IsUserPartOfCampaign(string userId, Campaign campaign)
+        public bool IsUserPartOfCampaign(VWOContext context, Campaign campaign)
         {
+            var userId = context.Id;
+
             if (campaign == null || string.IsNullOrEmpty(userId))
             {
                 return false;
             }
+            
+            var bucketingId = CampaignUtil.GetBucketingIdForUser(context);
 
             // Determine if the campaign is of type ROLLOUT or PERSONALIZE
             bool isRolloutOrPersonalize = campaign.Type == CampaignTypeEnum.ROLLOUT.GetValue() || campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue();
@@ -54,14 +59,15 @@ namespace VWOFmeSdk.Services
             double trafficAllocation = isRolloutOrPersonalize ? campaign.Variations[0].Weight : campaign.PercentTraffic;
 
             // Build the bucket key
-            string bucketKey = !string.IsNullOrEmpty(salt) ? $"{salt}_{userId}" : $"{campaign.Id}_{userId}";
+            // Generate bucket key using bucketing_id (custom seed or user_id) 
+            string bucketKey = !string.IsNullOrEmpty(salt) ? $"{salt}_{bucketingId}" : $"{campaign.Id}_{bucketingId}";
 
             int valueAssignedToUser = new DecisionMaker().GetBucketValueForUser(bucketKey);
             bool isUserPart = valueAssignedToUser != 0 && valueAssignedToUser <= trafficAllocation;
 
             LoggerService.Log(LogLevelEnum.INFO, "USER_PART_OF_CAMPAIGN", new Dictionary<string, string>
             {
-                {"userId", userId},
+                {"userId", bucketingId != userId ? $"{userId} (Seed: {bucketingId})" : userId },
                 {"notPart", isUserPart ? "" : "not"},
                 { "campaignKey", 
                     campaign.Type == CampaignTypeEnum.AB.GetValue() 
@@ -107,12 +113,15 @@ namespace VWOFmeSdk.Services
         /// <summary>
         /// Bucket the user to a variation
         /// </summary>
-        /// <param name="userId"></param>
+        /// <param name="context"></param>
         /// <param name="accountId"></param>
         /// <param name="campaign"></param>
-        public Variation BucketUserToVariation(string userId, string accountId, Campaign campaign)
+        public Variation BucketUserToVariation(VWOContext context, string accountId, Campaign campaign)
         {
-            if (campaign == null || string.IsNullOrEmpty(userId))
+            var userId = context.Id;
+            var bucketingId = CampaignUtil.GetBucketingIdForUser(context);
+
+            if (campaign == null || string.IsNullOrEmpty(bucketingId))
             {
                 return null;
             }
@@ -124,7 +133,7 @@ namespace VWOFmeSdk.Services
             string salt = campaign.Salt;
 
             // Get bucket key
-            string bucketKey = !string.IsNullOrEmpty(salt) ? $"{salt}_{accountId}_{userId}" : $"{campaign.Id}_{accountId}_{userId}";
+            string bucketKey = !string.IsNullOrEmpty(salt) ? $"{salt}_{accountId}_{bucketingId}" : $"{campaign.Id}_{accountId}_{bucketingId}";
 
             // Generate hash value
             long hashValue = new DecisionMaker().GenerateHashValue(bucketKey);
@@ -132,7 +141,7 @@ namespace VWOFmeSdk.Services
 
             LoggerService.Log(LogLevelEnum.DEBUG, "USER_BUCKET_TO_VARIATION", new Dictionary<string, string>
             {
-                {"userId", userId},
+                {"userId", bucketingId != userId ? $"{userId} (Seed: {bucketingId})" : userId },
                 { "campaignKey", 
                     campaign.Type == CampaignTypeEnum.AB.GetValue()
                     ? campaign.Key 
@@ -202,20 +211,20 @@ namespace VWOFmeSdk.Services
         /// <summary>
         /// Get the variation allotted to the user
         /// </summary>
-        /// <param name="userId"></param>
+        /// <param name="context"></param>
         /// <param name="accountId"></param>
         /// <param name="campaign"></param>
         /// <returns></returns>
-        public Variation GetVariationAllotted(string userId, string accountId, Campaign campaign)
+        public Variation GetVariationAllotted(VWOContext context, string accountId, Campaign campaign)
         {
-            bool isUserPart = IsUserPartOfCampaign(userId, campaign);
+            bool isUserPart = IsUserPartOfCampaign(context, campaign);
             if (campaign.Type == CampaignTypeEnum.ROLLOUT.GetValue() || campaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue())
             {
                 return isUserPart ? campaign.Variations[0] : null;
             }
             else
             {
-                return isUserPart ? BucketUserToVariation(userId, accountId, campaign) : null;
+                return isUserPart ? BucketUserToVariation(context, accountId, campaign) : null;
             }
         }
     }

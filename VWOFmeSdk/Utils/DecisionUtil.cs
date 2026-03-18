@@ -257,18 +257,20 @@ namespace VWOFmeSdk.Utils
         /// </summary>
         /// <param name="settings">The settings object containing the account details.</param>
         /// <param name="campaign">The campaign being evaluated.</param>
-        /// <param name="userId">The unique ID assigned to the user.</param>
+        /// <param name="context">The user context including user ID and custom variables.</param>
         /// <returns>The variation allotted to the user, or null if no variation is allotted.</returns>
-        public static Variation EvaluateTrafficAndGetVariation(Settings settings, Campaign campaign, string userId)
+        public static Variation EvaluateTrafficAndGetVariation(Settings settings, Campaign campaign, VWOContext context)
         {
+            var userId = context.Id;
+            var bucketingId = CampaignUtil.GetBucketingIdForUser(context);
             // Get the variation allotted to the user
-            var variation = new CampaignDecisionService().GetVariationAllotted(userId, settings.AccountId.ToString(), campaign);
+            var variation = new CampaignDecisionService().GetVariationAllotted(context, settings.AccountId.ToString(), campaign);
             if (variation == null)
             {
                 // Log that the user did not get any variation
                 LoggerService.Log(LogLevelEnum.INFO, "USER_CAMPAIGN_BUCKET_INFO", new Dictionary<string, string>
                 {
-                    { "userId", userId },
+                    { "userId", bucketingId != userId ? $"{userId} (Seed: {bucketingId})" : userId },
                     { "campaignKey", campaign.RuleKey },
                     { "status", "did not get any variation" }
                 });
@@ -278,7 +280,7 @@ namespace VWOFmeSdk.Utils
             // Log that the user got a specific variation
             LoggerService.Log(LogLevelEnum.INFO, "USER_CAMPAIGN_BUCKET_INFO", new Dictionary<string, string>
             {
-                { "userId", userId },
+                { "userId", bucketingId != userId ? $"{userId} (Seed: {bucketingId})" : userId },
                 { "campaignKey", campaign.RuleKey },
                 { "status", $"got variation: {variation.Name}" }
             });
@@ -352,6 +354,8 @@ namespace VWOFmeSdk.Utils
             // If multiple variations are targeted, scale the weights and get the variation
             if (targetedVariations.Count > 1)
             {
+                // Resolve bucketing ID for whitelisting
+                var bucketingId = CampaignUtil.GetBucketingIdForUser(context);
                 CampaignUtil.ScaleVariationWeights(targetedVariations);
                 int currentAllocation = 0;
                 foreach (var variation in targetedVariations)
@@ -360,7 +364,7 @@ namespace VWOFmeSdk.Utils
                     currentAllocation += stepFactor;
                 }
 
-                whitelistedVariation = new CampaignDecisionService().GetVariation(targetedVariations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(context.Id, campaign, null)));
+                whitelistedVariation = new CampaignDecisionService().GetVariation(targetedVariations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(bucketingId, campaign, null)));
             }
             else if (targetedVariations.Count == 1)
             {

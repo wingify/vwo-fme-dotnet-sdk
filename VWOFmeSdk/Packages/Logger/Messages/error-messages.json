@@ -54,5 +54,6 @@
   "ERROR_PROCESSING_SETTINGS": "Error occurred while processing settings: {err}",
   "ERROR_PARSING_SETTINGS": "Error occurred while parsing settings: {err}",
   "ERROR_UPDATING_SETTINGS": "Error occurred while updating settings: {err}",
-  "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES": "Network call for {extraData} failed after {attempts} retry attempt(s). Got Error: {err}"
+  "NETWORK_CALL_FAILURE_AFTER_MAX_RETRIES": "Network call for {extraData} failed after {attempts} retry attempt(s). Got Error: {err}",
+  "INVALID_BUCKETING_SEED": "Invalid bucketingSeed passed, since it can only be a valid string. Removing it from context so that userId is used for decisioning"
 }

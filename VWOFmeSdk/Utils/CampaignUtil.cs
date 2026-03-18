@@ -27,6 +27,7 @@ using VWOFmeSdk.Services;
 using System.Linq;
 using ConstantsNamespace = VWOFmeSdk.Constants;
 using VWOFmeSdk.Packages.Logger.Core;
+using VWOFmeSdk.Models.User;
 
 namespace VWOFmeSdk.Utils
 {
@@ -418,6 +419,23 @@ namespace VWOFmeSdk.Utils
                     {"endRange", variation.EndRangeVariation.ToString()}
                 });
             }
+        }
+
+        /// <summary>
+        /// Resolves the bucketing ID for a user based on a custom bucketing seed if present.
+        /// </summary>
+        /// <param name="context">The user context containing ID and custom seed.</param>
+        /// <returns>The resolved bucketing ID (either custom seed or user ID).</returns>
+        public static string GetBucketingIdForUser(VWOContext context)
+        {
+            // Retrieve userId and bucketingSeed from the context
+            string userId = context.Id;
+            string bucketingSeed = context.BucketingSeed;
+
+            // Use bucketingSeed if it's set, otherwise fall back to userId
+            string bucketingId = !string.IsNullOrEmpty(bucketingSeed) ? bucketingSeed : userId;
+
+            return bucketingId;
         }
     }
 }

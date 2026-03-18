@@ -34,6 +34,7 @@ namespace VWOFmeSdk.Models.User
         private GatewayService _vwo;
         private string _vwo_uuid;
         private long? _vwo_sessionId;
+        private string bucketingSeed;
 
         public string Id
         {
@@ -51,6 +52,12 @@ namespace VWOFmeSdk.Models.User
         {
             get { return _vwo_sessionId; }
             set { _vwo_sessionId = value; }
+        }
+
+        public string BucketingSeed
+        {
+            get { return bucketingSeed; }
+            set { bucketingSeed = value; }
         }
 
         /// <summary>

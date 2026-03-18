@@ -19,6 +19,7 @@
     <EmbeddedResource Include="Resources\SETTINGS_WITH_WRONG_TYPE_FOR_VALUES.json" />
     <EmbeddedResource Include="Resources\SETTINGS_WITH_EXTRA_KEYS_AT_ROOT_LEVEL.json" />
     <EmbeddedResource Include="Resources\SETTINGS_WITH_EXTRA_KEYS_INSIDE_OBJECTS.json" />
+    <EmbeddedResource Include="Resources\CUSTOM_BUCKETING_SEED_SETTINGS.json" />
 </ItemGroup>
 
 

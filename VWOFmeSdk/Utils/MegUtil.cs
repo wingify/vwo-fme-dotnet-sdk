@@ -168,7 +168,7 @@ namespace VWOFmeSdk.Utils
 
                 if (ruleToTestForTraffic != null)
                 {
-                    var variation = DecisionUtil.EvaluateTrafficAndGetVariation(settings, ruleToTestForTraffic, context.Id);
+                    var variation = DecisionUtil.EvaluateTrafficAndGetVariation(settings, ruleToTestForTraffic, context);
                     if (variation != null)
                     {
                         var rollOutInformation = new Dictionary<string, object>
@@ -247,7 +247,7 @@ namespace VWOFmeSdk.Utils
                     }
 
                     if (new CampaignDecisionService().GetPreSegmentationDecision(campaign, context) &&
-                        new CampaignDecisionService().IsUserPartOfCampaign(context.Id, campaign))
+                        new CampaignDecisionService().IsUserPartOfCampaign(context, campaign))
                     {
                         LoggerService.Log(LogLevelEnum.INFO, "MEG_CAMPAIGN_ELIGIBLE", new Dictionary<string, string>
                         {
@@ -378,16 +378,19 @@ namespace VWOFmeSdk.Utils
                 // Re-distribute the traffic for each campaign
                 CampaignUtil.SetCampaignAllocation(variations);
 
+                // Resolve bucketing ID for MEG random algorithm
+                var bucketingId = CampaignUtil.GetBucketingIdForUser(context);
+
                 // Get the winning variation
                 var winnerCampaign = new CampaignDecisionService().GetVariation(
-                    variations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(context.Id, null, groupId))
+                    variations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(bucketingId, null, groupId))
                 );
         
                 LoggerService.Log(LogLevelEnum.INFO, "MEG_WINNER_CAMPAIGN", new Dictionary<string, string>
                 {
                     {"campaignKey", winnerCampaign.Type == CampaignTypeEnum.AB.GetValue() ? winnerCampaign.Key : winnerCampaign.Key + "_" + winnerCampaign.RuleKey},
                     {"groupId", groupId.ToString()},
-                    {"userId", context.Id},
+                    {"userId", bucketingId != context.Id ? $"{context.Id} (Seed: {bucketingId})" : context.Id},
                     {"algo", "using random algorithm"}
                 });
 
@@ -402,6 +405,7 @@ namespace VWOFmeSdk.Utils
                     {
                         { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
                         { "context", context },
+                        { "userId", context.Id},
                         { "experimentId", winnerCampaign.Id },
                         { "experimentKey", winnerCampaign.Key },
                         { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }
@@ -468,6 +472,7 @@ namespace VWOFmeSdk.Utils
                     if (found)
                         break;
                 }
+                var bucketingId = CampaignUtil.GetBucketingIdForUser(context);
 
                 // If winnerCampaign not found through Priority, then go for weighted random distribution
                 if (winnerCampaign == null)
@@ -497,7 +502,7 @@ namespace VWOFmeSdk.Utils
 
                     CampaignUtil.SetCampaignAllocation(variations);
                     winnerCampaign = new CampaignDecisionService().GetVariation(
-                        variations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(context.Id, null, groupId))
+                        variations, new DecisionMaker().CalculateBucketValue(CampaignUtil.GetBucketingSeed(bucketingId, null, groupId))
                     );
                 }
 
@@ -508,7 +513,7 @@ namespace VWOFmeSdk.Utils
                     {
                         {"campaignKey", winnerCampaign.Type == CampaignTypeEnum.AB.GetValue() ? winnerCampaign.Key : winnerCampaign.Key + "_" + winnerCampaign.RuleKey},
                         {"groupId", groupId.ToString()},
-                        {"userId", context.Id},
+                        {"userId", bucketingId != context.Id ? $"{context.Id} (Seed: {bucketingId})" : context.Id},
                         {"algo", "using advanced algorithm"}
                     });
 
@@ -523,7 +528,8 @@ namespace VWOFmeSdk.Utils
                         new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
                         {
                             { "featureKey", $"{ConstantsNamespace.Constants.VWO_META_MEG_KEY}{groupId}" },
-                            { "context", context},
+                            { "context", context },
+                            { "userId", context.Id},
                             { "experimentId", winnerCampaign.Id },
                             { "experimentKey", winnerCampaign.Key },
                             { "experimentVariationId", winnerCampaign.Type == CampaignTypeEnum.PERSONALIZE.GetValue() ? winnerCampaign.Variations[0].Id : -1 }

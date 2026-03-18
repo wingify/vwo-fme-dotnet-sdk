@@ -170,7 +170,7 @@ namespace VWOFmeSdk.Api
                 if (rolloutRulesToEvaluate.Count > 0)
                 {
                     Campaign passedRolloutCampaign = rolloutRulesToEvaluate[0];
-                    Variation variation = DecisionUtil.EvaluateTrafficAndGetVariation(settings, passedRolloutCampaign, context.Id);
+                    Variation variation = DecisionUtil.EvaluateTrafficAndGetVariation(settings, passedRolloutCampaign, context);
                     if (variation != null)
                     {
                         getFlag.SetIsEnabled(true);
@@ -222,7 +222,7 @@ namespace VWOFmeSdk.Api
                 if (experimentRulesToEvaluate.Count > 0)
                 {
                     Campaign campaign = experimentRulesToEvaluate[0];
-                    Variation variation = DecisionUtil.EvaluateTrafficAndGetVariation(settings, campaign, context.Id);
+                    Variation variation = DecisionUtil.EvaluateTrafficAndGetVariation(settings, campaign, context);
                     if (variation != null)
                     {
                         getFlag.SetIsEnabled(true);

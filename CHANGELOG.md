@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0] - 2026-03-18
+
+### Added
+
+- Added support for custom bucketing seed on the `VWOContext` so that bucketing can be driven by a caller-provided seed instead of the raw `userId`, with automatic fallback to `userId` when the seed is not set.
+
+```csharp
+
+  using VWOFmeSdk;
+  using VWOFmeSdk.Models.User;
+
+  var vwoInitOptions = new VWOInitOptions
+  {
+      SdkKey = "YOUR_SDK_KEY",
+      AccountId = YOUR_ACCOUNT_ID,
+  };
+
+  // Initialize VWO SDK
+  var vwoInstance = VWO.Init(vwoInitOptions);
+
+  // Use custom bucketing seed so different userIds can share bucketing
+  var context = new VWOContext
+  {
+      Id = "user-id",
+      BucketingSeed = "custom_seed"
+  };
+
+  var getFlag = vwoInstance.GetFlag("feature-key", context);
+  // If bucketingSeed is invalid (non-string, empty or whitespace-only),
+  // the SDK logs INVALID_PARAM for bucketingSeed and falls back to userId.
+```
+
 ## [1.20.0] - 2026-02-26
 
 ### Added
