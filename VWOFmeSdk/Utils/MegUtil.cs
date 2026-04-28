@@ -56,6 +56,7 @@ namespace VWOFmeSdk.Utils
             var featureKeys = ((List<object>)featureKeysAndGroupCampaignIds["featureKeys"]).Cast<string>().ToList();
             var groupCampaignIds = ((List<object>)featureKeysAndGroupCampaignIds["groupCampaignIds"]).Cast<string>().ToList();
 
+            // Pass 1: resolve holdouts for every feature in the group before any rollout evaluation.
             foreach (var featureKey in featureKeys)
             {
                 var currentFeature = FunctionUtil.GetFeatureFromKey(settings, featureKey);
@@ -66,7 +67,54 @@ namespace VWOFmeSdk.Utils
                     continue;
                 }
 
-                // Evaluate the feature rollout rules
+                Dictionary<string, object> storedDataMap = new StorageDecorator().GetFeatureFromStorage(
+                    featureKey,
+                    context,
+                    storageService
+                );
+                string storageMapAsString = JsonConvert.SerializeObject(storedDataMap);
+                Storage storedData = JsonConvert.DeserializeObject<Storage>(storageMapAsString);
+
+                List<int> storedIsInHoldoutId = storedData?.IsInHoldoutId ?? new List<int>();
+
+                if (storedIsInHoldoutId != null && storedIsInHoldoutId.Count > 0) {
+                    featureToSkip.Add(featureKey);
+                    LoggerService.Log(LogLevelEnum.DEBUG, "PART_OF_HOLDOUT_IN_MEG", new Dictionary<string, string> { { "featureKey", featureKey }, { "holdoutId", storedIsInHoldoutId.ToString() }, { "userId", context.Id } });
+
+                    continue;
+                } 
+
+                Tuple<List<Holdout>, List<Holdout>, List<Dictionary<string, object>>> matchedHoldoutsResult = HoldoutUtil.GetMatchedHoldouts(settings, currentFeature, context, storedData);
+                List<Holdout> matchedHoldouts = matchedHoldoutsResult.Item1 ?? new List<Holdout>();
+
+                if(matchedHoldouts != null && matchedHoldouts.Count > 0) {
+                    featureToSkip.Add(featureKey);
+
+                    string qualifiedHoldoutIds = string.Join(",", matchedHoldouts.Select(holdout => holdout.Id).ToArray());
+                     new StorageDecorator().SetDataInStorage(
+                        new Dictionary<string, object>
+                        {
+                            { "featureKey", featureKey },
+                            { "context", context },
+                            { "userId", context.Id},
+                            { "isInHoldoutId", matchedHoldouts.Select(holdout => holdout.Id).ToList() }
+                        },
+                        storageService
+                    );
+
+                    LoggerService.Log(LogLevelEnum.DEBUG, "PART_OF_HOLDOUT_IN_MEG", new Dictionary<string, string> { { "featureKey", featureKey }, { "holdoutId", qualifiedHoldoutIds }, { "userId", context.Id } });
+                }
+            }
+
+            // Pass 2: rollouts and campaign collection only for features not in holdout.
+            foreach (var featureKey in featureKeys)
+            {
+                if (featureToSkip.Contains(featureKey))
+                {
+                    continue;
+                }
+
+                var currentFeature = FunctionUtil.GetFeatureFromKey(settings, featureKey);
                 bool isRolloutRulePassed = IsRolloutRuleForFeaturePassed(settings, currentFeature, evaluatedFeatureMap, featureToSkip, context, storageService);
                 if (isRolloutRulePassed)
                 {
@@ -82,7 +130,6 @@ namespace VWOFmeSdk.Utils
                                     {
                                         campaignMap[featureKey] = new List<Campaign>();
                                     }
-                                    // Check if the campaign is already present in the campaignMap for the feature
                                     if (!campaignMap[featureKey].Any(c => c.RuleKey == campaign.RuleKey))
                                     {
                                         campaignMap[featureKey].Add(campaign);

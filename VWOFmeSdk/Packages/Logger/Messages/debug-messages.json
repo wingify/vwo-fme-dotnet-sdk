@@ -13,5 +13,9 @@
   "UUID_EXTRACTION_FAILED": "Failed to extract UUID from payload",
   "EVENT_BATCHING_INITIALIZED": "Event Batching initialized successfully in SDK",
   "EVENT_BATCHING_NOT_INITIALIZED": "Event Batching functionality not initialized. SDK batching is disabled",
-  "DEFAULT_EVENT_BATCHING_INITIALIZED": "Default Event Batching functionality initialized"
+  "DEFAULT_EVENT_BATCHING_INITIALIZED": "Default Event Batching functionality initialized",
+  "HOLDOUT_SEGMENTATION_FAIL": "User: {userId} did not qualify segmentation for Holdout: {holdoutGroupName}",
+  "HOLDOUT_SHOULD_NOT_EXCLUDE_USER": "User {userId} is NOT part of Holdout {holdoutGroupName} for feature {featureKey}.",
+  "PART_OF_HOLDOUT_IN_MEG": "MEG: User id {userId} is part of holdout: {holdoutId} for feature: {featureKey}.",
+  "HOLDOUT_SKIP_EVALUATION": "SKIP holdout reevaluation for holdout ID: {holdoutId} because {reason}"
 }

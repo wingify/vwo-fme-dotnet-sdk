@@ -35,6 +35,15 @@ namespace VWOFmeSdk.Models
         private string sdkKey;
         private int version;
         private string collectionPrefix;
+        private List<Holdout> holdouts;
+
+        [JsonProperty("holdouts")]
+        [JsonConverter(typeof(EmptyObjectToArrayConverter<Holdout>))]
+        public List<Holdout> Holdouts
+        {
+            get { return holdouts; }
+            set { holdouts = value; }
+        }
 
         [JsonConverter(typeof(EmptyObjectToArrayConverter<Feature>))]
         public List<Feature> Features

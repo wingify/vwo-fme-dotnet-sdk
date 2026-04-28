@@ -88,6 +88,22 @@ namespace VWOFmeSdk.Models.Schemas
                 }
             }
 
+            if (settings.Holdouts == null)
+            {
+                settings.Holdouts = new List<Holdout>();
+            }
+
+            if (settings.Holdouts != null)
+            {
+                foreach (var holdout in settings.Holdouts)
+                {
+                    if (!IsValidHoldout(holdout))
+                    {
+                        return false;
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -188,6 +204,54 @@ namespace VWOFmeSdk.Models.Schemas
         private bool IsValidCampaignMetric(Metric metric)
         {
             return metric.Id != null && metric.Type != null && metric.Identifier != null;
+        }
+
+        private bool IsValidHoldout(Holdout holdout)
+        {
+            if (holdout == null)
+            {
+                return false;
+            }
+
+            if (holdout.FeatureIds == null || holdout.FeatureIds.Count == 0)
+            {
+                return false;
+            }
+
+            if (holdout.Metrics == null || holdout.Metrics.Count == 0)
+            {
+                return false;
+            }
+
+            if (holdout.Segments == null)
+            {
+                return false;
+            }
+
+            if (holdout.Id <= 0)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(holdout.Name))
+            {
+                return false;
+            }
+
+            if (holdout.PercentTraffic == null || holdout.PercentTraffic < 0 || holdout.PercentTraffic > 100)
+            {
+                return false;
+            }
+
+            foreach (var metric in holdout.Metrics)
+            {
+                if (!IsValidCampaignMetric(metric))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private bool IsValidRule(Rule rule)

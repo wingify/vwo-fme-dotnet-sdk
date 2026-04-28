@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.21.0</Version>
+    <Version>1.22.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -69,6 +69,7 @@
     <Compile Include="..\VWOFmeSdk\Models\Rule.cs" Link="Models\Rule.cs" />
     <Compile Include="..\VWOFmeSdk\Models\Storage.cs" Link="Models\Storage.cs" />
     <Compile Include="..\VWOFmeSdk\Models\Feature.cs" Link="Models\Feature.cs" />
+    <Compile Include="..\VWOFmeSdk\Models\Holdout.cs" Link="Models\Holdout.cs" />
     <Compile Include="..\VWOFmeSdk\Models\ImpactCampaign.cs" Link="Models\ImpactCampaign.cs" />
     <Compile Include="..\VWOFmeSdk\Models\User\GetFlag.cs" Link="Models\User\GetFlag.cs" />
     <Compile Include="..\VWOFmeSdk\Models\User\VWOContext.cs" Link="Models\User\VWOContext.cs" />
@@ -130,6 +131,7 @@
     <Compile Include="..\VWOFmeSdk\Utils\EventUtil.cs" Link="Utils\EventUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\SettingsJsonConverterUtil.cs" Link="Utils\SettingsJsonConverterUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\DebuggerServiceUtil.cs" Link="Utils\DebuggerServiceUtil.cs" />
+    <Compile Include="..\VWOFmeSdk\Utils\HoldoutUtil.cs" Link="Utils\HoldoutUtil.cs" />
 
     <!-- Main Classes -->
     <Compile Include="..\VWOFmeSdk\VWO.cs" Link="VWO.cs" />

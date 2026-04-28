@@ -107,12 +107,11 @@ namespace VWOFmeSdk.Utils
 
             foreach (var feature in settings.Features)
             {
-                if (feature.RulesLinkedCampaign == null) 
+                if (feature.RulesLinkedCampaign == null)
                     continue;
 
                 foreach (var rule in feature.RulesLinkedCampaign)
                 {
-
                     if (rule.Variations == null || rule.Variations.Count == 0)
                     {
                         continue;
@@ -126,33 +125,52 @@ namespace VWOFmeSdk.Utils
                         continue;
 
                     var jsonSegments = JsonConvert.SerializeObject(segments);
-                    var matches = pattern.Matches(jsonSegments);
-                    var foundMatch = false;
-
-                    foreach (Match match in matches)
-                    {
-                        if (Regex.IsMatch(match.Value, @"\b(country|region|city|os|device_type|browser_string|ua|os_version|browser_version)\b"))
-                        {
-                            if (!IsWithinCustomVariable(match.Index, jsonSegments))
-                            {
-                                foundMatch = true;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            foundMatch = true;
-                            break;
-                        }
-                    }
-
-                    if (foundMatch)
+                    
+                    if (CheckGatewayServiceRequired(jsonSegments, pattern))
                     {
                         feature.IsGatewayServiceRequired = true;
                         break;
                     }
                 }
             }
+
+            if (settings.Holdouts != null)
+            {
+                foreach (var holdout in settings.Holdouts)
+                {
+                    var segments = holdout.Segments;
+
+                    if (segments == null)
+                        continue;
+
+                    var jsonSegments = JsonConvert.SerializeObject(segments);
+                    
+                    if (CheckGatewayServiceRequired(jsonSegments, pattern))
+                    {
+                        holdout.IsGatewayServiceRequired = true;
+                    }
+                }
+            }
+        }
+
+        private static bool CheckGatewayServiceRequired(string jsonSegments, Regex pattern)
+        {
+            var matches = pattern.Matches(jsonSegments);
+            foreach (Match match in matches)
+            {
+                if (Regex.IsMatch(match.Value, @"\b(country|region|city|os|device_type|browser_string|ua|os_version|browser_version)\b"))
+                {
+                    if (!IsWithinCustomVariable(match.Index, jsonSegments))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>

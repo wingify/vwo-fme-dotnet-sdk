@@ -82,6 +82,9 @@ namespace VWOFmeSdk.Decorators
             string experimentKey = data.ContainsKey("experimentKey") ? data["experimentKey"] as string : null;
             int? rolloutVariationId = data.ContainsKey("rolloutVariationId") ? (int?)data["rolloutVariationId"] : null;
             int? experimentVariationId = data.ContainsKey("experimentVariationId") ? (int?)data["experimentVariationId"] : null;
+            List<int> isInHoldoutId = data.ContainsKey("isInHoldoutId") ? (List<int>)data["isInHoldoutId"] : null;
+            List<int> notInHoldoutId = data.ContainsKey("notInHoldoutId") ? (List<int>)data["notInHoldoutId"] : null;
+
 
             if (!string.IsNullOrEmpty(rolloutKey) && string.IsNullOrEmpty(experimentKey) && rolloutVariationId == null)
             {

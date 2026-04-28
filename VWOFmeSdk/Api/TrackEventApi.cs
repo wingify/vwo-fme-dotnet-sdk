@@ -38,7 +38,7 @@ namespace VWOFmeSdk.Api
             string apiValue = apiEnum.GetValue();
             try
             {
-                if (FunctionUtil.DoesEventBelongToAnyFeature(eventName, settings))
+                if (FunctionUtil.DoesEventBelongToAnyFeature(eventName, settings) || FunctionUtil.DoesEventBelongToAnyHoldout(eventName, settings))
                 {
                     CreateAndSendImpressionForTrack(settings, eventName, context, eventProperties);
                     Dictionary<string, object> objectToReturn = new Dictionary<string, object>

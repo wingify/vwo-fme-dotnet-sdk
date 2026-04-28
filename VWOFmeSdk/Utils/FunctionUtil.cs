@@ -135,5 +135,17 @@ namespace VWOFmeSdk.Utils
                 return err.ToString();
             }
         }
+
+        /// <summary>
+        /// Checks if an event exists within any holdout's metrics.
+        /// </summary>
+        /// <param name="eventName">The name of the event to check.</param>
+        /// <param name="settings">The settings containing holdouts.</param>
+        /// <returns>True if the event exists, otherwise false.</returns>
+        public static bool DoesEventBelongToAnyHoldout(string eventName, Settings settings)
+        {
+            // Checks if an event exists within any holdout's metrics.
+            return settings.Holdouts.Any(holdout => holdout.Metrics.Any(metric => metric.Identifier == eventName));
+        }
     }
 }

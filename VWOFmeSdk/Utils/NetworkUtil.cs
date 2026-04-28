@@ -413,7 +413,7 @@ namespace VWOFmeSdk.Utils
                     }
                 }
 
-                // Determine apiName and extraDataForMessage similar to Node implementation
+                // Determine apiName and extraDataForMessage
                 string apiName = null;
                 string extraDataForMessage = null;
 
@@ -570,6 +570,32 @@ namespace VWOFmeSdk.Utils
                 flushCallback?.OnFlush(ex.Message, payload);
                 return false;
             }
+        }
+
+         /// <summary>
+        /// Creates payload for holdout variation shown event.
+        /// </summary>
+        /// <param name="settings">The settings object</param>
+        /// <param name="eventName">The event name</param>
+        /// <param name="holdoutId">The holdout ID</param>
+        /// <param name="variationId">The variation ID (1 for IN, 2 for NOT IN)</param>
+        /// <param name="context">The VWO context</param>
+        /// <param name="featureId">The feature ID</param>
+        /// <returns>Dictionary containing the holdout payload data</returns>
+        public static Dictionary<string, object> CreateHoldoutPayload(Settings settings, string eventName, int holdoutId, int variationId, VWOContext context, int featureId)
+        {
+            var userId = context.Id;
+            var visitorUserAgent = context.UserAgent;
+            var ipAddress = context.IpAddress;
+
+            var properties = GetEventBasePayload(settings, userId, eventName, visitorUserAgent, ipAddress);
+            properties.D.Event.Props.Id = holdoutId;
+            properties.D.Event.Props.Variation = variationId.ToString(CultureInfo.InvariantCulture);
+            properties.D.Event.Props.IsFirst = 1;
+            properties.D.Event.Props.FId = featureId;
+
+            var payload = ConvertEventArchPayloadToDictionary(properties);
+            return RemoveNullValues(payload);
         }
 
         /// <summary>

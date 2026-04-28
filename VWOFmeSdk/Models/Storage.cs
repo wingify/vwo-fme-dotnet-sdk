@@ -31,6 +31,8 @@ namespace VWOFmeSdk.Models
         private int experimentId;
         private string experimentKey;
         private int experimentVariationId;
+        private List<int> isInHoldoutId;
+        private List<int> notInHoldoutId;
 
         public string FeatureKey
         {
@@ -78,6 +80,18 @@ namespace VWOFmeSdk.Models
         {
             get { return experimentVariationId; }
             set { experimentVariationId = value; }
+        }
+
+        public List<int> IsInHoldoutId
+        {
+            get { return isInHoldoutId; }
+            set { isInHoldoutId = value; }
+        }
+        
+        public List<int> NotInHoldoutId
+        {
+            get { return notInHoldoutId; }
+            set { notInHoldoutId = value; }
         }
     }
 }

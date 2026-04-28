@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using VWOFmeSdk.Models;
 using VWOFmeSdk.Models.User;
@@ -31,6 +32,7 @@ using static VWOFmeSdk.Utils.FunctionUtil;
 using VWOFmeSdk.Utils; // Ensure this namespace is included
 using VWOFmeSdk.Packages.Logger.Core;
 using ConstantsNamespace = VWOFmeSdk.Constants;
+using Newtonsoft.Json.Linq;
 
 namespace VWOFmeSdk.Api
 {
@@ -43,6 +45,7 @@ namespace VWOFmeSdk.Api
 
             Dictionary<string, object> passedRulesInformation = new Dictionary<string, object>();
             Dictionary<string, object> evaluatedFeatureMap = new Dictionary<string, object>();
+            List<int> notInHoldoutIds = new List<int>();
 
             // Get feature object from feature key
             Feature feature = GetFeatureFromKey(settings, featureKey);
@@ -50,13 +53,17 @@ namespace VWOFmeSdk.Api
             ApiEnum apiEnum = ApiEnum.GET_FLAG;
             string apiValue = apiEnum.GetValue();
             // Decision object to be sent for the integrations
-            Dictionary<string, object> decision = new Dictionary<string, object>
+           Dictionary<string, object> decision = new Dictionary<string, object>
             {
                 { "featureName", feature?.Name },
                 { "featureId", feature?.Id },
                 { "featureKey", feature?.Key },
                 { "userId", context?.Id },
-                { "api", apiValue }
+                { "api", apiValue },
+                { "holdoutIDs", new List<int>() },
+                { "isPartOfHoldout", false },
+                { "isHoldoutPresent", false },
+                { "isUserPartOfCampaign", false }
             };
 
               // create debug event props
@@ -77,6 +84,73 @@ namespace VWOFmeSdk.Api
             {
                 string storageMapAsString = JsonConvert.SerializeObject(storedDataMap);
                 Storage storedData = JsonConvert.DeserializeObject<Storage>(storageMapAsString);
+
+                // if storedData has isInHoldoutId, then check if the settings stil contain atleast 1 holdoutGroup that is present in the storedData
+                List<int> storedIsInHoldoutId = storedData?.IsInHoldoutId ?? new List<int>();
+                List<int> storedNotInHoldoutId = storedData?.NotInHoldoutId ?? new List<int>();
+
+                if (storedIsInHoldoutId != null && storedIsInHoldoutId.Count > 0) {
+                    List<Holdout> applicableHoldouts = HoldoutUtil.GetApplicableHoldouts(settings, feature.Id);
+
+                    if (applicableHoldouts.Count > 0) {
+                        foreach (var holdout in applicableHoldouts) {
+                            // if the holdout id is present in the storedData, then return the disabled flag
+                            if (storedIsInHoldoutId.Contains(holdout.Id)) {
+                                LoggerService.Log(LogLevelEnum.INFO, "STORED_HOLDOUT_DECISION_FOUND", new Dictionary<string, string> { { "featureKey", featureKey }, { "userId", context.Id }, { "holdoutId", holdout.Id.ToString() } });
+
+                                // evaluate the new holdouts in settings file and send the impression for them
+                                // destructuring the result to get the matched holdouts, not matched holdouts and holdout payloads
+                                Tuple<List<Holdout>, List<Holdout>, List<Dictionary<string, object>>> matchedHoldoutsResult = HoldoutUtil.GetMatchedHoldouts(settings, feature, context, storedData);
+                                List<Holdout> matchedHoldouts = matchedHoldoutsResult.Item1 ?? new List<Holdout>();
+                                List<Holdout> notMatchedHoldouts = matchedHoldoutsResult.Item2 ?? new List<Holdout>();
+                                List<Dictionary<string, object>> holdoutPayloads = matchedHoldoutsResult.Item3 ?? new List<Dictionary<string, object>>();
+                                
+                                // updatedHoldoutIds is the array of holdout ids for which user became part of the holdouts
+                                List<int> updatedHoldoutIds = storedIsInHoldoutId.Concat(matchedHoldouts.Select(matchedHoldout => matchedHoldout.Id)).ToList();
+                                // updatedNotInHoldoutIds is the array of holdout ids for which user became not part of the holdouts
+                                List<int> updatedNotInHoldoutIds = storedNotInHoldoutId.Concat(notMatchedHoldouts.Select(notMatchedHoldout => notMatchedHoldout.Id)).ToList();
+
+                                // store the updated holdout ids in storage and push the updated not in holdout ids to the notInHoldoutIds array
+                                new StorageDecorator().SetDataInStorage(
+                                new Dictionary<string, object>
+                                {
+                                    { "featureKey", featureKey },
+                                    { "context", context },
+                                    { "userId", context.Id},
+                                    { "isInHoldoutId", updatedHoldoutIds },
+                                    { "notInHoldoutId", updatedNotInHoldoutIds },
+                                }, storageService );
+
+                                if (SettingsManager.GetInstance().isGatewayServiceProvided) {
+                                    foreach (var payload in holdoutPayloads) {
+                                        if (payload != null &&
+                                            payload.TryGetValue("d", out var dObj) && dObj is Dictionary<string, object> dDict &&
+                                            dDict.TryGetValue("event", out var eventObj) && eventObj is Dictionary<string, object> eventDict &&
+                                            eventDict.TryGetValue("props", out var propsObj) && propsObj is Dictionary<string, object> propsDict &&
+                                            propsDict.TryGetValue("id", out var idObj) && int.TryParse(idObj?.ToString(), out var campaignId) &&
+                                            propsDict.TryGetValue("variation", out var variationObj) && int.TryParse(variationObj?.ToString(), out var variationId)) {
+                                            ImpressionUtil.SendImpressionForVariationShown(settings, campaignId, variationId, context, feature.Key, payload);
+                                        }
+                                    }
+                                } else{
+                                    var vwoInstance = VWO.GetInstance();
+                                    if (vwoInstance.BatchEventQueue != null) {
+                                        foreach (var payload in holdoutPayloads) {
+                                            vwoInstance.BatchEventQueue.Enqueue(payload);
+                                        }
+                                    }
+                                    else {
+                                        NetworkUtil.SendPostBatchRequest(holdoutPayloads, settings.AccountId, settings.SdkKey, null);
+                                    }
+                                }
+
+                                getFlag.SetIsEnabled(false);
+                                return getFlag;
+                            }
+                        }
+                    }
+                    
+                } 
                 if (storedData != null && storedData.ExperimentVariationId != null && !string.IsNullOrEmpty(storedData.ExperimentVariationId.ToString()))
                 {
                     if (!string.IsNullOrEmpty(storedData.ExperimentKey))
@@ -91,6 +165,16 @@ namespace VWOFmeSdk.Api
                                 { "experimentType", "experiment" },
                                 { "experimentKey", storedData.ExperimentKey }
                             });
+                            decision["isUserPartOfCampaign"] = true;
+
+                            // network calls for holdouts that are newly added in settings and are not present in storage
+                            HoldoutUtil.SendNetworkCallsForNotInHoldouts(
+                                settings,
+                                feature,
+                                context,
+                                decision,
+                                storedData
+                            );
                             getFlag.SetIsEnabled(true);
                             getFlag.Variables = variation.Variables;
                             return getFlag;
@@ -109,11 +193,23 @@ namespace VWOFmeSdk.Api
                             { "experimentType", "rollout" },
                             { "experimentKey", storedData.RolloutKey }
                         });
+                        decision["isUserPartOfCampaign"] = true;
 
                         LoggerService.Log(LogLevelEnum.DEBUG, "EXPERIMENTS_EVALUATION_WHEN_ROLLOUT_PASSED", new Dictionary<string, string>
                         {
                             { "userId", context.Id }
                         });
+                        // network calls for holdouts that are newly added in settings and are not present in storage
+                        List<int> updatedNotInHoldoutIds = HoldoutUtil.SendNetworkCallsForNotInHoldouts(
+                            settings,
+                            feature,
+                            context,
+                            decision,
+                            storedData
+                        );
+                        
+                        // push/append the updated not in holdout ids to the notInHoldoutIds array
+                        notInHoldoutIds.AddRange(updatedNotInHoldoutIds);
 
                         getFlag.SetIsEnabled(true);
                         shouldCheckForExperimentsRules = true;
@@ -142,6 +238,123 @@ namespace VWOFmeSdk.Api
             }
 
             SegmentationManager.GetInstance().SetContextualData(settings, feature, context);
+
+            if(!getFlag.IsEnabled()) {
+                // Holdout group exclusion: if user falls into any holdout group for this feature, return disabled
+                string storageMapAsString = JsonConvert.SerializeObject(storedDataMap);
+                Storage storedData = JsonConvert.DeserializeObject<Storage>(storageMapAsString);
+                Tuple<List<Holdout>, List<Holdout>, List<Dictionary<string, object>>> matchedHoldoutsResult = HoldoutUtil.GetMatchedHoldouts(settings, feature, context, storedData);
+                List<Holdout> matchedHoldouts = matchedHoldoutsResult.Item1 ?? new List<Holdout>();
+                List<Holdout> notMatchedHoldouts = matchedHoldoutsResult.Item2 ?? new List<Holdout>();
+                List<Dictionary<string, object>> holdoutPayloads = matchedHoldoutsResult.Item3 ?? new List<Dictionary<string, object>>();
+
+                decision["isPartOfHoldout"] = matchedHoldouts != null && matchedHoldouts.Count > 0;
+                if ( (matchedHoldouts != null && matchedHoldouts.Count > 0) || (notMatchedHoldouts != null && notMatchedHoldouts.Count > 0)) {
+                    decision["isHoldoutPresent"] = true;
+                }
+
+                if (matchedHoldouts != null && matchedHoldouts.Count > 0)
+                {
+                    string qualifiedHoldoutNames = string.Join(",", matchedHoldouts.Select(holdout => holdout.Name));
+                    decision["holdoutIDs"] = matchedHoldouts.Select(holdout => holdout.Id).ToList();
+
+                    LoggerService.Log(LogLevelEnum.INFO, "USER_IN_HOLDOUT_GROUP", new Dictionary<string, string>
+                    {
+                        { "userId", context.Id },
+                        { "holdoutGroupName", qualifiedHoldoutNames },
+                        { "featureKey", featureKey }
+                    });
+
+                    new StorageDecorator().SetDataInStorage(new Dictionary<string, object>
+                    {
+                        { "featureKey", featureKey },
+                        { "context", context },
+                        { "userId", context.Id},
+                        { "isInHoldoutId", matchedHoldouts.Select(holdout => holdout.Id).ToList() },
+                        { "notInHoldoutId", notMatchedHoldouts.Select(holdout => holdout.Id).ToList() }
+                    }, storageService);
+
+
+                    hookManager.Set(decision);
+                    hookManager.Execute(hookManager.Get());
+
+                    if (SettingsManager.GetInstance().isGatewayServiceProvided) {
+                        foreach (var payload in holdoutPayloads)
+                        {
+                            if (payload == null) continue;
+
+                            var payloadObject = JObject.FromObject(payload);
+
+                            var propsObject = payloadObject["d"]?["event"]?["props"];
+                            if (propsObject == null) continue;
+
+                            var campaignIdToken = propsObject["id"];
+                            var variationIdToken = propsObject["variation"];
+
+                            if (campaignIdToken == null || variationIdToken == null) continue;
+
+                            if (int.TryParse(campaignIdToken.ToString(), out var campaignId) &&
+                                int.TryParse(variationIdToken.ToString(), out var variationId))
+                            {
+
+                                ImpressionUtil.SendImpressionForVariationShown( settings, campaignId, variationId, context, feature.Key, payload);
+                            }
+                        }
+                    } else {
+                        var vwoInstance = VWO.GetInstance();
+                        if (vwoInstance.BatchEventQueue != null) {
+                            foreach (var payload in holdoutPayloads) {
+                                vwoInstance.BatchEventQueue.Enqueue(payload);
+                            }
+                        }
+                        else {
+                            NetworkUtil.SendPostBatchRequest(holdoutPayloads, settings.AccountId, settings.SdkKey, null);
+                        }
+                    }
+
+                    getFlag.SetIsEnabled(false);
+                    return getFlag;
+                }
+                else
+                {
+                    LoggerService.Log(LogLevelEnum.INFO, "USER_NOT_EXCLUDED_DUE_TO_HOLDOUT", new Dictionary<string, string>
+                    {
+                        { "featureKey", featureKey },
+                        { "userId", context.Id }
+                    });
+                    notInHoldoutIds.AddRange(notMatchedHoldouts.Select(holdout => holdout.Id).ToList());
+                    // send impression for the not in holdout ids
+                    if (SettingsManager.GetInstance().isGatewayServiceProvided) {
+                        foreach (var payload in holdoutPayloads) {
+                            if (payload == null) continue;
+
+                            var payloadObject = JObject.FromObject(payload);
+                            var propsObject = payloadObject["d"]?["event"]?["props"];
+                            if (propsObject == null) continue;
+
+                            var campaignIdToken = propsObject["id"];
+                            var variationIdToken = propsObject["variation"];
+
+                            if (campaignIdToken == null || variationIdToken == null) continue;
+
+                            if (int.TryParse(campaignIdToken.ToString(), out var campaignId) &&
+                                int.TryParse(variationIdToken.ToString(), out var variationId)) {
+                                ImpressionUtil.SendImpressionForVariationShown(settings, campaignId, variationId, context, feature.Key, payload);
+                            }
+                        }
+                    } else {
+                        var vwoInstance = VWO.GetInstance();
+                        if (vwoInstance.BatchEventQueue != null) {
+                            foreach (var payload in holdoutPayloads) {
+                                vwoInstance.BatchEventQueue.Enqueue(payload);
+                            }
+                        }
+                        else {
+                            NetworkUtil.SendPostBatchRequest(holdoutPayloads, settings.AccountId, settings.SdkKey, null);
+                        }
+                    }
+                }
+            }
 
             // Get all the rollout rules for the feature and evaluate them
             List<Campaign> rollOutRules = GetSpecificRulesBasedOnType(feature, CampaignTypeEnum.ROLLOUT);
@@ -174,6 +387,7 @@ namespace VWOFmeSdk.Api
                     if (variation != null)
                     {
                         getFlag.SetIsEnabled(true);
+                        decision["isUserPartOfCampaign"] = true;
                         getFlag.Variables = variation.Variables;
                         shouldCheckForExperimentsRules = true;
                         UpdateIntegrationsDecisionObject(passedRolloutCampaign, variation, passedRulesInformation, decision);
@@ -209,6 +423,7 @@ namespace VWOFmeSdk.Api
                         else
                         {
                             getFlag.SetIsEnabled(true);
+                            decision["isUserPartOfCampaign"] = true;
                             getFlag.Variables = whitelistedObject.Variables;
                             passedRulesInformation["experimentId"] = rule.Id;
                             passedRulesInformation["experimentKey"] = rule.Key;
@@ -226,6 +441,7 @@ namespace VWOFmeSdk.Api
                     if (variation != null)
                     {
                         getFlag.SetIsEnabled(true);
+                        decision["isUserPartOfCampaign"] = true;
                         getFlag.Variables = variation.Variables;
                         UpdateIntegrationsDecisionObject(campaign, variation, passedRulesInformation, decision);
                         ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, campaign.Id, variation.Id, context, featureKey);
@@ -239,13 +455,26 @@ namespace VWOFmeSdk.Api
                 {
                     { "featureKey", feature.Key },
                     { "context", context },
-                    { "userId", context.Id }
+                    { "userId", context.Id },
+                    { "notInHoldoutId", notInHoldoutIds },
                 };
                 foreach (var item in passedRulesInformation)
                 {
                     storageMap[item.Key] = item.Value;
                 }
                 new StorageDecorator().SetDataInStorage(storageMap, storageService);
+            } else {
+                new StorageDecorator().SetDataInStorage(
+                    new Dictionary<string, object>
+                    {
+                        { "featureKey", feature.Key },
+                        { "context", context },
+                        { "userId", context.Id},
+                        { "notInHoldoutId", notInHoldoutIds }
+                    },
+                    storageService
+                );
+                
             }
 
             // Execute the integrations

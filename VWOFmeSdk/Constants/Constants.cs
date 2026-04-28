@@ -85,5 +85,9 @@ namespace VWOFmeSdk.Constants
         public const int HTTP_SUCCESS_MIN = 200;
         public const int HTTP_SUCCESS_MAX = 299;
         public const int HTTP_SUCCESS_UPPER_BOUND = 300;
+
+        public const int VARIATION_IS_PART_OF_HOLDOUT = 1;
+        public const int VARIATION_NOT_PART_OF_HOLDOUT = 2;
+        public const string NOT_IN_HOLDOUT_KEY_PREFIX = "_vwo_not_in_holdout_";
     }
 }

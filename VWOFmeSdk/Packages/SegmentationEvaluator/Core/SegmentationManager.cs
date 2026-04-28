@@ -17,6 +17,7 @@
 #pragma warning disable 1587
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -77,8 +78,15 @@ namespace VWOFmeSdk.Packages.SegmentationEvaluator.Core
             {
                 return;
             }
+
+            var holdouts = settings.Holdouts ?? new List<Holdout>();
+            bool isGatewayServiceRequiredForHoldouts = holdouts.Any(holdout => holdout.IsGatewayServiceRequired);
+
+            // Call gateway service if required for segmentation OR if gateway service is provided and user agent is available
+            bool shouldCallGatewayService = ((feature.IsGatewayServiceRequired || isGatewayServiceRequiredForHoldouts) && !SettingsManager.GetInstance().hostname.Contains(ConstantsNamespace.Constants.HOST_NAME)) ||
+                                           (!SettingsManager.GetInstance().hostname.Contains(ConstantsNamespace.Constants.HOST_NAME) && (!string.IsNullOrEmpty(context.UserAgent) || !string.IsNullOrEmpty(context.IpAddress)));
             
-            if (feature.IsGatewayServiceRequired && SettingsManager.GetInstance().isGatewayServiceProvided && context.Vwo == null)
+            if (shouldCallGatewayService)
             {
                 var queryParams = new Dictionary<string, string>();
                 if (string.IsNullOrEmpty(context.UserAgent) && string.IsNullOrEmpty(context.IpAddress))

@@ -60,7 +60,7 @@ namespace VWOFmeSdk.Utils
                 }
                 else
                 {
-                    //NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_SDK_INIT_EVENT.GetValue());
+                    NetworkUtil.SendEvent(properties, payload, EventEnum.VWO_SDK_INIT_EVENT.GetValue());
                 }
             }
             catch (Exception ex)

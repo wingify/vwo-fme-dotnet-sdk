@@ -30,6 +30,69 @@ namespace VWOFmeSdk.Utils
     public static class ImpressionUtil
     {
         /// <summary>
+        /// Sends an impression event for the variation shown using a pre-constructed payload.
+        /// </summary>
+        /// <param name="settings">The SDK settings.</param>
+        /// <param name="campaignId">The campaign ID.</param>
+        /// <param name="variationId">The variation ID.</param>
+        /// <param name="context">The VWO context.</param>
+        /// <param name="featureKey">The feature key.</param>
+        /// <param name="payload">The pre-constructed payload to send.</param>
+        public static void SendImpressionForVariationShown(
+            Settings settings,
+            int campaignId,
+            int variationId,
+            VWOContext context,
+            string featureKey,
+            Dictionary<string, object> payload)
+        {
+            string campaignKeyWithFeatureName = CampaignUtil.GetCampaignKeyFromCampaignId(settings, campaignId);
+            string variationName = CampaignUtil.GetVariationNameFromCampaignIdAndVariationId(settings, campaignId, variationId);
+            string campaignKey = string.Empty;
+
+            if (featureKey == campaignKeyWithFeatureName)
+            {
+                campaignKey = ConstantsNamespace.Constants.IMPACT_ANALYSIS;
+            }
+            else
+            {
+                var prefix = featureKey + "_";
+                if (!string.IsNullOrEmpty(campaignKeyWithFeatureName) && campaignKeyWithFeatureName.StartsWith(prefix))
+                {
+                    campaignKey = campaignKeyWithFeatureName.Substring(prefix.Length);
+                }
+                else
+                {
+                    campaignKey = campaignKeyWithFeatureName ?? string.Empty;
+                }
+            }
+
+            string campaignType = CampaignUtil.GetCampaignTypeFromCampaignId(settings, campaignId);
+
+            Dictionary<string, object> campaignInfo = new Dictionary<string, object>
+            {
+                { "campaignKey", campaignKey },
+                { "variationName", variationName },
+                { "featureKey", featureKey },
+                { "campaignType", campaignType }
+            };
+
+            var vwoInstance = VWO.GetInstance();
+            if (vwoInstance.BatchEventQueue != null)
+            {
+                vwoInstance.BatchEventQueue.Enqueue(payload);
+            }
+            else
+            {
+                var properties = NetworkUtil.GetEventsBaseProperties(
+                    EventEnum.VWO_VARIATION_SHOWN.GetValue(),
+                    EncodeURIComponent(context.UserAgent),
+                    context.IpAddress);
+                NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress, campaignInfo);
+            }
+        }
+
+        /// <summary>
         /// This method creates and sends an impression event for the campaign and variation shown to the user.
         /// </summary>
         /// <param name="settings"></param>
