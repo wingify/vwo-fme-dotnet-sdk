@@ -29,7 +29,8 @@ namespace VWOFmeSdk.Enums
         SET_ATTRIBUTE,
         FLUSH_EVENTS,
         BATCH_FLUSH,
-        SHUTDOWN
+        SHUTDOWN,
+        SET_ALIAS,
     }
 
     public static class ApiEnumExtensions
@@ -54,6 +55,8 @@ namespace VWOFmeSdk.Enums
                     return "batchFlush";
                 case ApiEnum.SHUTDOWN:
                     return "shutdown";
+                case ApiEnum.SET_ALIAS:
+                    return "setAlias";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(apiEnum), apiEnum, null);
             }

@@ -118,6 +118,13 @@ namespace VWOFmeSdk
                 return null;
             }
 
+            if (options.IsAliasingEnabled && (options.GatewayService == null || string.IsNullOrEmpty(options.GatewayService["url"].ToString())))
+            {
+                string message = LogMessageUtil.BuildMessage("Please provide the gatewayService URL in the options if aliasing is enabled", null);
+                Console.Error.WriteLine(message);
+                return null;
+            }
+
             instance = SetInstance(options);
 
             // Stop timer for total init time

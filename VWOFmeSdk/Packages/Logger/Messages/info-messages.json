@@ -39,6 +39,7 @@
   "EVENT_QUEUED" : "Event {eventName} queued successfully",
   "SETTINGS_UPDATED": "Settings fetched and updated successfully on the current VWO client instance when API: {apiName} got called having isViaWebhook param as {isViaWebhook}",
   "PROXY_AND_GATEWAY_SERVICE_PROVIDED": "Both proxy URL and gateway service are provided. Gateway service will be used and proxy URL will be ignored",
+  "ALIAS_ENABLED": "Alias ID:{userId} is used for tracking events",
   "STORED_HOLDOUT_DECISION_FOUND": "User id: {userId} already part of holdout id: {holdoutId} for feature key: {featureKey}.",
   "HOLDOUT_SHOULD_EXCLUDE_USER": "User {userId} ({bucketValue}%) is in Holdout: {holdoutGroupName} with targeted traffic percent: {percentTraffic}% for feature : {featureKey}.",
   "USER_IN_HOLDOUT_GROUP": "User {userId} is in holdout group {holdoutGroupName} for feature {featureKey} - feature excluded",

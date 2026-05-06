@@ -310,6 +310,50 @@ var vwoInitOptions = new VWOInitOptions
 var vwoClient = VWO.Init(vwoInitOptions);
 ```
 
+### User Aliasing
+
+User aliasing lets you associate an existing user ID with an alternate ID (alias) so future evaluations and tracking use a unified identity across systems.
+
+Requirements:
+
+- Gateway must be configured
+- Aliasing must be enabled during initialization: `IsAliasingEnabled = true`
+
+Initialization example:
+
+```csharp
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var vwoInitOptions = new VWOInitOptions
+{
+    AccountId = 123456,
+    SdkKey = "32-alpha-numeric-sdk-key",
+    IsAliasingEnabled = true,
+    GatewayService = new Dictionary<string, object> { { "url", "https://custom.gateway.com" } }
+};
+
+var vwoClient = VWO.Init(vwoInitOptions);
+```
+
+Usage examples:
+
+```csharp
+// Using VWOContext
+var context = new VWOContext { Id = "user-123" };
+bool success1 = vwoClient.SetAlias(context, "alias-abc");
+
+// Using direct userId
+bool success2 = vwoClient.SetAlias("user-123", "alias-abc");
+```
+
+Behavior and validations:
+
+- Returns true on success, false otherwise
+- Requires aliasing to be enabled and gateway configured
+- aliasId must be a non-empty string; it is trimmed before use
+- When passing context, `context.Id` must be a non-empty string; it is trimmed before use
+- userId and aliasId cannot be the same
 
 ### Storage
 

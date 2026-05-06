@@ -45,6 +45,7 @@ namespace VWOFmeSdk.Models.User
         private bool isBatchingDisabled;
         private int? maxRequestQueueCapacity;
         private string proxyUrl = "";
+        private bool isAliasingEnabled = false;
 
         public Dictionary<string, object> RetryConfig
         {
@@ -164,6 +165,12 @@ namespace VWOFmeSdk.Models.User
         {
             get { return isBatchingDisabled; }
             set { isBatchingDisabled = value; }
+        }
+
+        public bool IsAliasingEnabled
+        {
+            get { return isAliasingEnabled; }
+            set { isAliasingEnabled = value; }
         }
     }
 }

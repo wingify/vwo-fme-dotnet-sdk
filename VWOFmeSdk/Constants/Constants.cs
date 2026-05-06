@@ -79,6 +79,10 @@ namespace VWOFmeSdk.Constants
         public const string NETWORK_CALL_SUCCESS_WITH_RETRIES = "NETWORK_CALL_SUCCESS_WITH_RETRIES";
         public const string IMPACT_ANALYSIS = "IMPACT_ANALYSIS";
 
+        // Aliasing constants
+        public const string KEY_USER_ID = "userId";
+        public const string KEY_ALIAS_ID = "aliasId";
+
         // HTTP status code constants
         public const int HTTP_OK = 200;
         public const int HTTP_BAD_REQUEST = 400;

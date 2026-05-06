@@ -6,7 +6,7 @@
     <AssemblyName>VWOFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>VWO.FME.Sdk</PackageId>
-    <Version>1.22.0</Version>
+    <Version>1.23.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -131,6 +131,8 @@
     <Compile Include="..\VWOFmeSdk\Utils\EventUtil.cs" Link="Utils\EventUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\SettingsJsonConverterUtil.cs" Link="Utils\SettingsJsonConverterUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\DebuggerServiceUtil.cs" Link="Utils\DebuggerServiceUtil.cs" />
+    <Compile Include="..\VWOFmeSdk\Utils\UserIdUtil.cs" Link="Utils\UserIdUtil.cs" />
+    <Compile Include="..\VWOFmeSdk\Utils\AliasingUtil.cs" Link="Utils\AliasingUtil.cs" />
     <Compile Include="..\VWOFmeSdk\Utils\HoldoutUtil.cs" Link="Utils\HoldoutUtil.cs" />
 
     <!-- Main Classes -->

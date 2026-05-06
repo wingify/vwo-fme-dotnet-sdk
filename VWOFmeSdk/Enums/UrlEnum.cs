@@ -25,7 +25,9 @@ namespace VWOFmeSdk.Enums
         EVENTS,
         ATTRIBUTE_CHECK,
         GET_USER_DATA,
-        BATCH_EVENTS
+        BATCH_EVENTS,
+        SET_ALIAS,
+        GET_ALIAS,
     }
 
     public static class UrlEnumExtensions
@@ -42,6 +44,10 @@ namespace VWOFmeSdk.Enums
                     return "/get-user-details";
                 case UrlEnum.BATCH_EVENTS:
                     return "/server-side/batch-events-v2";
+                case UrlEnum.SET_ALIAS:
+                    return "/user-alias/setUserAlias";
+                case UrlEnum.GET_ALIAS:
+                    return "/user-alias/getAliasUserId";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(urlEnum), urlEnum, null);
             }

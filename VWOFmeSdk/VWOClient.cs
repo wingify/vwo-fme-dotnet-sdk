@@ -39,6 +39,7 @@ namespace VWOFmeSdk
         private Settings processedSettings;
         public string Settings { get; private set; }
         private VWOInitOptions options;
+        private bool isAliasingEnabled;
         public static JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
         {
             MissingMemberHandling = MissingMemberHandling.Ignore
@@ -64,6 +65,7 @@ namespace VWOFmeSdk
             {
                 this.options = options;
                 this.vwoBuilder = vwoBuilder;
+                this.isAliasingEnabled = options.IsAliasingEnabled;
                 if (settings == null)
                 {
                     return;
@@ -166,6 +168,9 @@ namespace VWOFmeSdk
                     getFlag.SetIsEnabled(false);
                     return getFlag;
                 }
+                //Get userId using UserIdUtil if aliasing is enabled and gateway service is provided
+                string userId = UserIdUtil.GetUserId(context.Id, this.isAliasingEnabled);
+                context.Id = userId;
                   
                 // Check if "bucketingSeed" is present in the context and handle validation
                 if(context.BucketingSeed != null)
@@ -213,6 +218,10 @@ namespace VWOFmeSdk
                     LogManager.GetInstance().ErrorLog("API_CONTEXT_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.TRACK.GetValue() } }, false);
                     throw new ArgumentException("User ID is required");
                 }
+
+                //Get userId using UserIdUtil if aliasing is enabled and gateway service is provided
+                string userId = UserIdUtil.GetUserId(context.Id, this.isAliasingEnabled);
+                context.Id = userId;
 
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
@@ -288,6 +297,10 @@ namespace VWOFmeSdk
                     throw new ArgumentException("Invalid Context");
                 }
 
+                //Get userId using UserIdUtil if aliasing is enabled and gateway service is provided
+                string userId = UserIdUtil.GetUserId(context.Id, this.isAliasingEnabled);
+                context.Id = userId;
+
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
                     LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
@@ -351,6 +364,10 @@ namespace VWOFmeSdk
                     throw new ArgumentException("Invalid Context");
                 }
 
+                //Get userId using UserIdUtil if aliasing is enabled and gateway service is provided
+                string userId = UserIdUtil.GetUserId(context.Id, this.isAliasingEnabled);
+                context.Id = userId;
+
                 if (this.processedSettings == null || !new SettingsSchema().IsSettingsValid(this.processedSettings))
                 {
                     LogManager.GetInstance().ErrorLog("SETTINGS_SCHEMA_INVALID", new Dictionary<string, string> { }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
@@ -362,6 +379,96 @@ namespace VWOFmeSdk
             catch (Exception exception)
             {
                 LogManager.GetInstance().ErrorLog("API_THROW_ERROR", new Dictionary<string, string> { { "apiName", apiName }, { "err", FunctionUtil.GetFormattedErrorMessage(exception) } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } });
+            }
+        }
+
+        /// <summary>
+        /// Sets alias for a given user ID or context
+        /// </summary>
+        /// <param name="contextOrUserId">The context containing user ID or the user ID directly</param>
+        /// <param name="aliasId">The alias identifier to set</param>
+        /// <returns>True if successful, false otherwise</returns>
+        public bool SetAlias(object contextOrUserId, string aliasId)
+        {
+            string apiName = ApiEnum.SET_ALIAS.GetValue();
+            try
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG, "API_CALLED", new Dictionary<string, string> { { "apiName", apiName } });
+
+                if (!this.isAliasingEnabled)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "Aliasing is not enabled.");
+                    return false;
+                }
+
+                if (!SettingsManager.GetInstance().isGatewayServiceProvided)
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "Gateway URL is not provided.");
+                    return false;
+                }
+
+                if (aliasId == null || aliasId == "")
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "TypeError: Invalid aliasId");
+                    throw new ArgumentException("TypeError: Invalid aliasId");
+                }
+
+                // trim aliasId before going forward
+                aliasId = aliasId.Trim();
+
+                string userId = null;
+
+                if (contextOrUserId is string)
+                {
+                    var userIdStr = contextOrUserId as string;
+                    if (string.IsNullOrEmpty(userIdStr))
+                    {
+                        LoggerService.Log(LogLevelEnum.ERROR, "Invalid userId passed to setAlias API.");
+                        throw new ArgumentException("TypeError: Invalid userId");
+                    }
+
+                    if (userIdStr == aliasId)
+                    {
+                        LoggerService.Log(LogLevelEnum.ERROR, "UserId and aliasId cannot be the same.");
+                        return false;
+                    }
+
+                    userId = userIdStr.Trim();
+                }
+                else if (contextOrUserId is VWOContext)
+                {
+                    var ctx = contextOrUserId as VWOContext;
+                    if (ctx == null || string.IsNullOrEmpty(ctx.Id))
+                    {
+                        LoggerService.Log(LogLevelEnum.ERROR, "Invalid context passed to setAlias API.");
+                        throw new ArgumentException("TypeError: Invalid context");
+                    }
+
+                    if (ctx.Id == aliasId)
+                    {
+                        LoggerService.Log(LogLevelEnum.ERROR, "UserId and aliasId cannot be the same.");
+                        return false;
+                    }
+
+                    userId = ctx.Id.Trim();
+                }
+                else
+                {
+                    LoggerService.Log(LogLevelEnum.ERROR, "Invalid context passed to setAlias API.");
+                    throw new ArgumentException("TypeError: Invalid context");
+                }
+
+                var result = AliasingUtil.SetAlias(userId, aliasId);
+                return result != null;
+            }
+            catch (Exception error)
+            {
+                LoggerService.Log(LogLevelEnum.ERROR, "API_THROW_ERROR", new Dictionary<string, string>
+                {
+                    { "apiName", apiName },
+                    { "err", error.ToString() }
+                });
+                return false;
             }
         }
 

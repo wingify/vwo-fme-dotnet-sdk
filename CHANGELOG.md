@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.22.0] - 2025-04-28
+## [1.23.0] - 2026-04-29
+
+### Added
+
+- Add support for user aliasing (works when Gateway is configured)
+
+  ```c#
+  using VWOFmeSdk;
+  using VWOFmeSdk.Models.User;
+
+  var vwoInitOptions = new VWOInitOptions
+  {
+      SdkKey = "32-alpha-numeric-sdk-key",
+      AccountId = YOUR_ACCOUNT_ID,
+      GatewayService = new Dictionary<string, object>
+      {
+          { "url", "http://your-custom-gateway-url" }
+      },
+      IsAliasingEnabled = true,
+  };
+
+  var vwoClient = VWO.Init(vwoInitOptions);
+
+  // Using context
+  var context = new VWOContext { Id = "user-id" };
+  var successFromContext = vwoClient.SetAlias(context, "aliasId");
+
+  // Alternatively, pass userId directly
+  var successFromUserId = vwoClient.SetAlias("user-id", "aliasId");
+  ```
+
+## [1.22.0] - 2026-04-28
 
 ### Added
 
