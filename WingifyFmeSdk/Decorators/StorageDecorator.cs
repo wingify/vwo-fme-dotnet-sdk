@@ -1,0 +1,118 @@
+#pragma warning disable 1587
+/**
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma warning restore 1587
+
+using System;
+using System.Collections.Generic;
+using WingifyFmeSdk.Interfaces.Storage;
+using WingifyFmeSdk.Models.User;
+using WingifyFmeSdk.Models;
+using WingifyFmeSdk.Enums;
+using WingifyFmeSdk.Services;
+using WingifyFmeSdk.Packages.Logger.Core;
+using WingifyFmeSdk.Enums;
+
+
+namespace WingifyFmeSdk.Decorators
+{
+    public class StorageDecorator : IStorageDecorator
+    {
+        /// <summary>
+        ///  Get feature from storage
+        /// </summary>
+        /// <param name="featureKey"></param>
+        /// <param name="context"></param>
+        /// <param name="storageService"></param>
+        /// <returns></returns>
+        public Dictionary<string, object> GetFeatureFromStorage(string featureKey, WingifyContext context, StorageService storageService)
+        {
+            return storageService.GetDataInStorage(featureKey, context);
+        }
+
+        /// <summary>
+        /// Set data in storage
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="storageService"></param>
+        /// <returns></returns>
+        public Variation SetDataInStorage(Dictionary<string, object> data, StorageService storageService)
+        {
+            string featureKey = data["featureKey"] as string;
+            WingifyContext context = data["context"] as WingifyContext;
+
+            if (string.IsNullOrEmpty(featureKey))
+            {
+                LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
+                {
+                    { "key", "featureKey" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
+                });
+                return null;
+            }
+
+            if (context == null || string.IsNullOrEmpty(context.Id))
+            {
+               LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
+                {
+                    { "key", "Context or Context.Id" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId.ToString() }
+                });
+                return null;
+            }
+
+            string rolloutKey = data.ContainsKey("rolloutKey") ? data["rolloutKey"] as string : null;
+            string experimentKey = data.ContainsKey("experimentKey") ? data["experimentKey"] as string : null;
+            int? rolloutVariationId = data.ContainsKey("rolloutVariationId") ? (int?)data["rolloutVariationId"] : null;
+            int? experimentVariationId = data.ContainsKey("experimentVariationId") ? (int?)data["experimentVariationId"] : null;
+            List<int> isInHoldoutId = data.ContainsKey("isInHoldoutId") ? (List<int>)data["isInHoldoutId"] : null;
+            List<int> notInHoldoutId = data.ContainsKey("notInHoldoutId") ? (List<int>)data["notInHoldoutId"] : null;
+
+
+            if (!string.IsNullOrEmpty(rolloutKey) && string.IsNullOrEmpty(experimentKey) && rolloutVariationId == null)
+            {
+                LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
+                {
+                    { "key", "Variation:(rolloutKey, experimentKey or rolloutVariationId)" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
+                });
+                return null;
+            }
+
+            if (!string.IsNullOrEmpty(experimentKey) && experimentVariationId == null)
+            {
+                LogManager.GetInstance().ErrorLog("ERROR_STORING_DATA_IN_STORAGE", new Dictionary<string, string>
+                {
+                    { "key", "Variation:(experimentKey or rolloutVariationId)" }
+                }, new Dictionary<string, object>
+                {
+                    { "an", ApiEnum.GET_FLAG.GetValue()}, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId }
+                });
+                return null;
+            }
+
+            storageService.SetDataInStorage(data);
+
+            return new Variation(); // Assuming you need to return a new Variation instance.
+        }
+    }
+}

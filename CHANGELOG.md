@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.50.0] - 2026-05-29
+
+This release introduces **Wingify** as the primary SDK branding and package namespace, while keeping existing **VWO** integrations fully supported.
+
+### Added
+
+- **Wingify public API** — use `Wingify`, `WingifyInitOptions`, and `WingifyContext` from the `WingifyFmeSdk` namespace as the recommended entry point for new integrations.
+
+  ```csharp
+  using WingifyFmeSdk;
+  using WingifyFmeSdk.Models.User;
+
+  var options = new WingifyInitOptions
+  {
+      AccountId = 123456,
+      SdkKey = "32-alpha-numeric-sdk-key"
+  };
+
+  var client = Wingify.Init(options);
+
+  var context = new WingifyContext
+  {
+      Id = "user-123"
+  };
+
+  var flag = client.GetFlag("feature-key", context);
+  ```
+
+### Changed
+
+- The SDK implementation now lives under the `WingifyFmeSdk` namespace.
+- Log messages and documentation have been updated to reflect Wingify branding.
+- **No breaking changes for existing integrations** — server event names, payload keys, and runtime behavior remain compatible with the VWO platform.
+
+### Deprecated
+
+The following **VWO** classes in `VWOFmeSdk` are deprecated but **continue to work without modification**:
+
+| Deprecated (still supported) | Use instead |
+|---|---|
+| `VWOFmeSdk.VWO` | `WingifyFmeSdk.Wingify` |
+| `VWOFmeSdk.Models.User.VWOInitOptions` | `WingifyFmeSdk.Models.User.WingifyInitOptions` |
+| `VWOFmeSdk.Models.User.VWOContext` | `WingifyFmeSdk.Models.User.WingifyContext` |
+| `VWOFmeSdk.Interfaces.Logger.LogTransport` | `WingifyFmeSdk.Interfaces.Logger.LogTransport` |
+| `VWOFmeSdk.Packages.Logger.Enums.LogLevelEnum` | `WingifyFmeSdk.Packages.Logger.Enums.LogLevelEnum` |
+| `VWOFmeSdk.Interfaces.Integration.IntegrationCallback` | `WingifyFmeSdk.Interfaces.Integration.IntegrationCallback` |
+| `VWOFmeSdk.Packages.Storage.Connector` | `WingifyFmeSdk.Packages.Storage.Connector` |
+
+Existing code does not need to change immediately. We recommend adopting the Wingify API for new projects and migrating when convenient:
+
+```csharp
+// Still supported — no action required today
+using VWOFmeSdk;
+using VWOFmeSdk.Models.User;
+
+var options = new VWOInitOptions
+{
+    AccountId = 123456,
+    SdkKey = "32-alpha-numeric-sdk-key"
+};
+
+var client = VWO.Init(options);
+
+var context = new VWOContext
+{
+    Id = "user-123"
+};
+
+client.GetFlag("feature-key", context);
+```
+
+**Migration tip:** Replace `VWO` → `Wingify`, `VWOInitOptions` → `WingifyInitOptions`, and `VWOContext` → `WingifyContext`, and update `using` statements from `VWOFmeSdk` to `WingifyFmeSdk`. Method signatures and SDK behavior are unchanged.
+
+
 ## [1.23.0] - 2026-04-29
 
 ### Added

@@ -1,0 +1,54 @@
+#pragma warning disable 1587
+/**
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma warning restore 1587
+
+using System;
+using WingifyFmeSdk.Services;
+
+namespace WingifyFmeSdk.Services
+{
+    public static class UrlService
+    {
+        private static string collectionPrefix;
+
+        /**
+         * Initializes the UrlService with the collectionPrefix and gatewayService
+         * @param collectionPrefix  collectionPrefix to be used in the URL
+         */
+        public static void Init(string collectionPrefix)
+        {
+            if (!string.IsNullOrEmpty(collectionPrefix))
+            {
+                UrlService.collectionPrefix = collectionPrefix;
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the endpoint with collection prefix.
+        /// </summary>
+        /// <param name="endpoint">The endpoint path (e.g., "/batch")</param>
+        /// <returns>The endpoint prefixed with the collection prefix if set; otherwise, the original endpoint.</returns>
+        public static string GetEndpointWithCollectionPrefix(string endpoint, bool isGatewayServiceProvided)
+        {
+            if (!string.IsNullOrEmpty(collectionPrefix) && !isGatewayServiceProvided)
+            {
+                return $"/{collectionPrefix}{endpoint}";
+            }
+            return endpoint;
+        }
+    }
+}

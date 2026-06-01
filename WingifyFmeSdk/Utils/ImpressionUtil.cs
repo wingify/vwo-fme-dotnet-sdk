@@ -1,0 +1,166 @@
+#pragma warning disable 1587
+/**
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma warning restore 1587
+
+using System;
+using System.Collections.Generic;
+using WingifyFmeSdk;
+using WingifyFmeSdk.Enums;
+using WingifyFmeSdk.Models;
+using WingifyFmeSdk.Models.User;
+using WingifyFmeSdk.Utils;
+using ConstantsNamespace = WingifyFmeSdk.Constants;
+
+namespace WingifyFmeSdk.Utils
+{
+    public static class ImpressionUtil
+    {
+        /// <summary>
+        /// Sends an impression event for the variation shown using a pre-constructed payload.
+        /// </summary>
+        /// <param name="settings">The SDK settings.</param>
+        /// <param name="campaignId">The campaign ID.</param>
+        /// <param name="variationId">The variation ID.</param>
+        /// <param name="context">The Wingify context.</param>
+        /// <param name="featureKey">The feature key.</param>
+        /// <param name="payload">The pre-constructed payload to send.</param>
+        public static void SendImpressionForVariationShown(
+            Settings settings,
+            int campaignId,
+            int variationId,
+            WingifyContext context,
+            string featureKey,
+            Dictionary<string, object> payload)
+        {
+            string campaignKeyWithFeatureName = CampaignUtil.GetCampaignKeyFromCampaignId(settings, campaignId);
+            string variationName = CampaignUtil.GetVariationNameFromCampaignIdAndVariationId(settings, campaignId, variationId);
+            string campaignKey = string.Empty;
+
+            if (featureKey == campaignKeyWithFeatureName)
+            {
+                campaignKey = ConstantsNamespace.Constants.IMPACT_ANALYSIS;
+            }
+            else
+            {
+                var prefix = featureKey + "_";
+                if (!string.IsNullOrEmpty(campaignKeyWithFeatureName) && campaignKeyWithFeatureName.StartsWith(prefix))
+                {
+                    campaignKey = campaignKeyWithFeatureName.Substring(prefix.Length);
+                }
+                else
+                {
+                    campaignKey = campaignKeyWithFeatureName ?? string.Empty;
+                }
+            }
+
+            string campaignType = CampaignUtil.GetCampaignTypeFromCampaignId(settings, campaignId);
+
+            Dictionary<string, object> campaignInfo = new Dictionary<string, object>
+            {
+                { "campaignKey", campaignKey },
+                { "variationName", variationName },
+                { "featureKey", featureKey },
+                { "campaignType", campaignType }
+            };
+
+            var vwoInstance = WingifyClient.GetInstance();
+            if (vwoInstance.BatchEventQueue != null)
+            {
+                vwoInstance.BatchEventQueue.Enqueue(payload);
+            }
+            else
+            {
+                var properties = NetworkUtil.GetEventsBaseProperties(
+                    EventEnum.VARIATION_SHOWN.GetValue(),
+                    context.UserAgent,
+                    context.IpAddress);
+                NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress, campaignInfo);
+            }
+        }
+
+        /// <summary>
+        /// This method creates and sends an impression event for the campaign and variation shown to the user.
+        /// </summary>
+        /// <param name="settings"></param>
+        /// <param name="campaignId"></param>
+        /// <param name="variationId"></param>
+        /// <param name="context"></param>
+        public static void CreateAndSendImpressionForVariationShown(Settings settings, int campaignId, int variationId, WingifyContext context, string featureKey)
+        {
+            var payload = NetworkUtil.GetTrackUserPayloadData(settings, EventEnum.VARIATION_SHOWN.GetValue(), campaignId, variationId, context);
+            var vwoInstance = WingifyClient.GetInstance();
+
+            // Get the campaign key with feature name
+            string campaignKeyWithFeatureName = CampaignUtil.GetCampaignKeyFromCampaignId(settings, campaignId);
+            // Get the variation name for the campaignId and variationId
+            string variationName = CampaignUtil.GetVariationNameFromCampaignIdAndVariationId(settings, campaignId, variationId);
+            string campaignKey = string.Empty;
+            // If featureKey is equal to the campaignKeyWithFeatureName, set campaignKey to IMPACT_ANALYSIS constant
+            if (featureKey == campaignKeyWithFeatureName)
+            {
+                campaignKey = ConstantsNamespace.Constants.IMPACT_ANALYSIS;
+            }
+            else
+            {
+                // Otherwise, split the campaignKeyWithFeatureName and get the part after featureKey + "_"
+                var prefix = featureKey + "_";
+                if (!string.IsNullOrEmpty(campaignKeyWithFeatureName) && campaignKeyWithFeatureName.StartsWith(prefix))
+                {
+                    campaignKey = campaignKeyWithFeatureName.Substring(prefix.Length);
+                }
+                else
+                {
+                    campaignKey = campaignKeyWithFeatureName;
+                }
+            }
+            // Get the campaign type from campaignId
+            string campaignType = CampaignUtil.GetCampaignTypeFromCampaignId(settings, campaignId);
+            
+
+            Dictionary<string, object> campaignInfo = new Dictionary<string, object>
+            {
+                { "campaignKey", campaignKey },
+                { "variationName", variationName },
+                { "featureKey", featureKey },
+                { "campaignType", campaignType }
+            };
+            // Check if batch events are enabled
+            if (vwoInstance.BatchEventQueue != null)
+            {
+                // Enqueue the event to the batch queue
+                vwoInstance.BatchEventQueue.Enqueue(payload);
+            }
+            else
+            {
+                var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VARIATION_SHOWN.GetValue(), context.UserAgent, context.IpAddress);
+                NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress, campaignInfo);
+            }
+        }
+
+        public static string EncodeURIComponent(string value)
+        {
+            try
+            {
+                return Uri.EscapeDataString(value);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Error encoding URI component: " + e.Message);
+            }
+        }
+    }
+}

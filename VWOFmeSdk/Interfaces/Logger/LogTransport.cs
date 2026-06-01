@@ -1,6 +1,6 @@
 #pragma warning disable 1587
 /**
- * Copyright 2024-2025 Wingify Software Pvt. Ltd.
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,11 @@
  */
 #pragma warning restore 1587
 
-using System;
-using VWOFmeSdk.Packages.Logger.Enums;
+using WingifyFmeSdk.Packages.Logger.Enums;
 
 namespace VWOFmeSdk.Interfaces.Logger
 {
-    /// <summary>
-    ///     Interface for LogTransport
-    /// </summary>
-    public interface LogTransport
+    public interface LogTransport : WingifyFmeSdk.Interfaces.Logger.LogTransport
     {
-        void Log(LogLevelEnum level, string message);
     }
 }

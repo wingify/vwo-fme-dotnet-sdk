@@ -1,6 +1,6 @@
 #pragma warning disable 1587
 /**
- * Copyright 2024-2025 Wingify Software Pvt. Ltd.
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,12 @@
  */
 #pragma warning restore 1587
 
-using System;
-using VWOFmeSdk.Interfaces.Batching;
+using System.Collections.Generic;
+using WingifyFmeSdk.Models.Request;
 
 namespace VWOFmeSdk.Models
 {
-    public class BatchEventData
+    public class BatchEventData : WingifyFmeSdk.Models.BatchEventData
     {
-        public int EventsPerRequest { get; set; } = 100; // Default value
-        public int RequestTimeInterval { get; set; } = 600; // Default value (in seconds)
-        public IFlushInterface FlushCallback { get; set; }
     }
 }

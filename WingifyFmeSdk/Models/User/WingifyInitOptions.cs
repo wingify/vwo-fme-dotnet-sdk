@@ -1,0 +1,176 @@
+#pragma warning disable 1587
+/**
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma warning restore 1587
+
+using System.Collections.Generic;
+using WingifyFmeSdk.Interfaces.Integration;
+using WingifyFmeSdk.Interfaces.Networking;
+using WingifyFmeSdk.Packages.SegmentationEvaluator.Evaluators;
+using WingifyFmeSdk.Packages.Storage;
+using WingifyFmeSdk.Models;
+using ConstantsNamespace = WingifyFmeSdk.Constants;
+namespace WingifyFmeSdk.Models.User
+{
+    public class WingifyInitOptions
+    {
+        private string sdkKey;
+        private int? accountId;
+        private IntegrationCallback integrations;
+        private Dictionary<string, object> logger = new Dictionary<string, object>();
+        private NetworkClientInterface networkClientInterface;
+        private SegmentEvaluator segmentEvaluator;
+        private Connector storage;
+        private int? pollInterval;
+        private WingifyBuilder vwoBuilder;
+        private Dictionary<string, object> gatewayService;
+        private BatchEventData batchEventData;
+        private bool isUsageStatsDisabled;
+        private Dictionary<string, object> vwoMetaData = new Dictionary<string, object>();
+        private Dictionary<string, object> retryConfig;
+        private int? maxConcurrentThreads;
+        private bool isBatchingDisabled;
+        private int? maxRequestQueueCapacity;
+        private string proxyUrl = "";
+        private bool isAliasingEnabled = false;
+
+        public Dictionary<string, object> RetryConfig
+        {
+            get { return retryConfig; }
+            set { retryConfig = value ?? ConstantsNamespace.Constants.DEFAULT_RETRY_CONFIG; }
+        }
+
+        public int? MaxConcurrentThreads
+        {
+            get { return maxConcurrentThreads; }
+            set { maxConcurrentThreads = value; }
+        }
+
+        /// <summary>
+        /// Capacity of the bounded channel used to queue POST requests.
+        /// If not provided (null) or invalid (<= 0), the SDK uses the default constant.
+        /// </summary>
+        public int? MaxRequestQueueCapacity
+        {
+            get { return maxRequestQueueCapacity; }
+            set { maxRequestQueueCapacity = value; }
+        }
+
+        public string ProxyUrl
+        {
+            get { return proxyUrl; }
+            set { proxyUrl = value; }
+        }
+
+        private string settings;
+
+        public string SdkKey
+        {
+            get { return sdkKey; }
+            set { sdkKey = value; }
+        }
+
+        public int? AccountId
+        {
+            get { return accountId; }
+            set { accountId = value; }
+        }
+
+        public IntegrationCallback Integrations
+        {
+            get { return integrations; }
+            set { integrations = value; }
+        }
+
+        public Dictionary<string, object> Logger
+        {
+            get { return logger; }
+            set { logger = value; }
+        }
+
+        public Dictionary<string, object> GatewayService
+        {
+            get { return gatewayService; }
+            set { gatewayService = value; }
+        }
+
+        public NetworkClientInterface NetworkClientInterface
+        {
+            get { return networkClientInterface; }
+            set { networkClientInterface = value; }
+        }
+
+        public SegmentEvaluator SegmentEvaluator
+        {
+            get { return segmentEvaluator; }
+            set { segmentEvaluator = value; }
+        }
+
+        public Connector Storage
+        {
+            get { return storage; }
+            set { storage = value; }
+        }
+
+        public int? PollInterval
+        {
+            get { return pollInterval; }
+            set { pollInterval = value; }
+        }
+
+        public WingifyBuilder VwoBuilder
+        {
+            get { return vwoBuilder; }
+            set { vwoBuilder = value; }
+        }
+
+        public string Settings
+        {
+            get { return settings; }
+            set { settings = value; }
+        }
+
+        public BatchEventData BatchEventData
+        {
+            get { return batchEventData; }
+            set { batchEventData = value; }
+        }
+        
+        public bool IsUsageStatsDisabled
+        {
+            get { return isUsageStatsDisabled; }
+            set { isUsageStatsDisabled = value; }
+        }
+
+        public Dictionary<string, object> VwoMetaData
+        {
+            get { return vwoMetaData; }
+            set { vwoMetaData = value; }
+        }
+
+        public bool IsBatchingDisabled
+        {
+            get { return isBatchingDisabled; }
+            set { isBatchingDisabled = value; }
+        }
+
+        public bool IsAliasingEnabled
+        {
+            get { return isAliasingEnabled; }
+            set { isAliasingEnabled = value; }
+        }
+    }
+}

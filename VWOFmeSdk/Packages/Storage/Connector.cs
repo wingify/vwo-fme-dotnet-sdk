@@ -1,6 +1,6 @@
 #pragma warning disable 1587
 /**
- * Copyright 2024-2025 Wingify Software Pvt. Ltd.
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma warning disable 1587
+#pragma warning restore 1587
 
-using System;
 using System.Collections.Generic;
 
 namespace VWOFmeSdk.Packages.Storage
 {
-    public abstract class Connector
+    public abstract class Connector : WingifyFmeSdk.Packages.Storage.Connector
     {
-        // Abstract methods to be implemented by subclasses
-        public abstract void Set(Dictionary<string, object> data);
-        public abstract object Get(string featureKey, string userId);
     }
 }

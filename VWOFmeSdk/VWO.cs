@@ -1,6 +1,6 @@
 #pragma warning disable 1587
 /**
- * Copyright 2024-2025 Wingify Software Pvt. Ltd.
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,8 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using VWOFmeSdk.Models.User;
-using VWOFmeSdk.Utils;
-using VWOFmeSdk.Packages.Logger.Enums;
-using VWOFmeSdk.Services;
-
+using WingifyFmeSdk;
+using WingifyFmeSdk.Utils;
 
 namespace VWOFmeSdk
 {
@@ -32,25 +30,13 @@ namespace VWOFmeSdk
         private static VWOBuilder vwoBuilder;
         private static VWO instance;
 
-        /// <summary>
-        /// Constructor for the VWO class.
-        /// Initializes a new instance of VWO with the provided options.
-        /// </summary>
-        /// <param name="settings">Configuration settings for the VWO instance.</param>
-        /// <param name="options">Configuration options for the VWO instance.</param>
         public VWO(string settings, VWOInitOptions options, VWOBuilder vwoBuilder) : base(settings, options, vwoBuilder) { }
 
-        /// <summary>
-        /// Sets the singleton instance of VWO.
-        /// Configures and builds the VWO instance using the provided options.
-        /// </summary>
-        /// <param name="options">Configuration options for setting up VWO.</param>
-        /// <returns>A configured VWO instance.</returns>
         private static VWO SetInstance(VWOInitOptions options)
         {
             if (options.VwoBuilder != null)
             {
-                vwoBuilder = options.VwoBuilder;
+                vwoBuilder = (VWOBuilder)options.VwoBuilder;
             }
             else
             {
@@ -72,7 +58,7 @@ namespace VWOFmeSdk
             {
                 settings = options.Settings;
                 vwoBuilder.SetSettings(settings);
-            } 
+            }
             else if (vwoBuilder.settingsSetManually)
             {
                 settings = vwoBuilder.GetOriginalSettings();
@@ -81,69 +67,60 @@ namespace VWOFmeSdk
             {
                 settings = vwoBuilder.GetSettings(false);
             }
-            // Create the VWO instance
+
             VWO vwoInstance = new VWO(settings, options, vwoBuilder);
 
-            // Set VWOClient instance in VWOBuilder
-            vwoBuilder.SetVWOClient(vwoInstance);
+            vwoBuilder.SetWingifyClient(vwoInstance);
             vwoBuilder.InitBatching();
             return vwoInstance;
         }
 
-        /// <summary>
-        /// Gets the singleton instance of VWO.
-        /// </summary>
-        /// <returns>The singleton instance of VWO.</returns>
-        public static VWO GetInstance()
+        public static new VWO GetInstance()
         {
             return instance;
         }
 
         public static VWO Init(VWOInitOptions options)
         {
-            // Start timer for total init time
+            // Set flag before initializing Wingify core
+            BrandContext.SetIsViaVwo(true);
+            
             var initStartTime = DateTime.UtcNow;
             
             if (options == null || string.IsNullOrEmpty(options.SdkKey))
             {
-                string message = LogMessageUtil.BuildMessage("SDK key is required to initialize VWO. Please provide the sdkKey in the options.", null);
+                string message = WingifyFmeSdk.Utils.LogMessageUtil.BuildMessage("SDK key is required to initialize VWO. Please provide the sdkKey in the options.", null);
                 Console.Error.WriteLine(message);
                 return null;
             }
 
             if (options == null || options.AccountId == null || string.IsNullOrEmpty(options.AccountId.ToString()))
             {    
-                string message = LogMessageUtil.BuildMessage("Account ID is required to initialize VWO. Please provide the accountId in the options.", null);
+                string message = WingifyFmeSdk.Utils.LogMessageUtil.BuildMessage("Account ID is required to initialize VWO. Please provide the accountId in the options.", null);
                 Console.Error.WriteLine(message);
                 return null;
             }
 
             if (options.IsAliasingEnabled && (options.GatewayService == null || string.IsNullOrEmpty(options.GatewayService["url"].ToString())))
             {
-                string message = LogMessageUtil.BuildMessage("Please provide the gatewayService URL in the options if aliasing is enabled", null);
+                string message = WingifyFmeSdk.Utils.LogMessageUtil.BuildMessage("Please provide the gatewayService URL in the options if aliasing is enabled", null);
                 Console.Error.WriteLine(message);
                 return null;
             }
 
             instance = SetInstance(options);
 
-            // Stop timer for total init time
             var initEndTime = DateTime.UtcNow;
             var sdkInitTime = (int)(initEndTime - initStartTime).TotalMilliseconds;
 
-
-            // wasInitialized is used to check if the SDK was initialized earlier
             bool wasInitialized = false;
             var originalSettingsString = vwoBuilder.GetOriginalSettings();
             if (!string.IsNullOrEmpty(originalSettingsString))
             {
-                // originalSettings is a string, so we need to parse it to a dictionary 
                 var originalSettings = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
-                // Check if sdkMetaInfo exists and contains wasInitializedEarlier
                 if (originalSettings.ContainsKey("sdkMetaInfo") && originalSettings["sdkMetaInfo"] != null)
                 {
                     var sdkMetaInfo = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettings["sdkMetaInfo"].ToString());
-                    // Check if wasInitializedEarlier exists in sdkMetaInfo
                     wasInitialized = sdkMetaInfo.ContainsKey("wasInitializedEarlier") ? (bool)sdkMetaInfo["wasInitializedEarlier"] : false;
                 }
                 else
@@ -159,7 +136,7 @@ namespace VWOFmeSdk
             var settingsManager = vwoBuilder.GetSettingsManager();
             if(!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
             {
-                EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
+                WingifyFmeSdk.Utils.EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
             }
 
             long? usageStatsAccountId = null;
@@ -176,7 +153,7 @@ namespace VWOFmeSdk
             
             if(usageStatsAccountId.HasValue)
             {
-                EventUtil.SendSDKUsageStatsEvent((int)usageStatsAccountId.Value);
+                WingifyFmeSdk.Utils.EventUtil.SendSDKUsageStatsEvent((int)usageStatsAccountId.Value);
             }
 
             return instance;

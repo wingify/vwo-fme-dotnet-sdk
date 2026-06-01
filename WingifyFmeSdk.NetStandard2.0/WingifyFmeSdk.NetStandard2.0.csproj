@@ -1,0 +1,206 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>WingifyFmeSdk</RootNamespace>
+    <AssemblyName>WingifyFmeSdk</AssemblyName>
+    <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <PackageId>Wingify.FME.Sdk</PackageId>
+    <Version>1.50.0</Version>
+    <Authors>VWO devs</Authors>
+    <Company>Wingify</Company>
+    <Product>VWO</Product>
+    <Copyright>Wingify Software Pvt. Ltd.</Copyright>
+    <Description>VWO Feature Management and Experimentation SDK for .Net</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591;1587;0105;0108;0168;0472;4014;1998;0414;SYSLIB0014</NoWarn>
+    <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/wingify/vwo-fme-dotnet-sdk/</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://developers.vwo.com/v2/docs/fme-dotnet</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Enums -->
+    <Compile Include="..\WingifyFmeSdk\Enums\ApiEnum.cs" Link="Enums\ApiEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\CampaignTypeEnum.cs" Link="Enums\CampaignTypeEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\EventEnum.cs" Link="Enums\EventEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\HeadersEnum.cs" Link="Enums\HeadersEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\HooksEnum.cs" Link="Enums\HooksEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\StatusEnum.cs" Link="Enums\StatusEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\StorageEnum.cs" Link="Enums\StorageEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\UrlEnum.cs" Link="Enums\UrlEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Enums\DebuggerCategoryEnum.cs" Link="Enums\DebuggerCategoryEnum.cs" />
+
+    <!-- Constants -->
+    <Compile Include="..\WingifyFmeSdk\Constants\Constants.cs" Link="Constants\Constants.cs" />
+
+    <!-- Decorators -->
+    <Compile Include="..\WingifyFmeSdk\Decorators\StorageDecorator.cs" Link="Decorators\StorageDecorator.cs" />
+
+    <!-- Interfaces -->
+    <Compile Include="..\WingifyFmeSdk\Interfaces\Networking\NetworkClientInterface.cs" Link="Interfaces\Networking\NetworkClientInterface.cs" />
+    <Compile Include="..\WingifyFmeSdk\Interfaces\Logger\ILogManager.cs" Link="Interfaces\Logger\ILogManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Interfaces\Logger\LogTransport.cs" Link="Interfaces\Logger\LogTransport.cs" />
+    <Compile Include="..\WingifyFmeSdk\Interfaces\Storage\IStorageDecorator.cs" Link="Interfaces\Storage\IStorageDecorator.cs" />
+    <Compile Include="..\WingifyFmeSdk\Interfaces\Integration\IntegrationCallback.cs" Link="Interfaces\Integration\IntegrationCallback.cs" />
+    <Compile Include="..\WingifyFmeSdk\Interfaces\Batching\IFlushInterface.cs" Link="Interfaces\Batching\IFlushInterface.cs" />
+
+    <!-- Logger -->
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\Enums\LogLevelEnum.cs" Link="Packages\Logger\Enums\LogLevelEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\Enums\LogLevelNumberEnum.cs" Link="Packages\Logger\Enums\LogLevelNumberEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\Core\LogManager.cs" Link="Packages\Logger\Core\LogManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\Core\LogTransportManager.cs" Link="Packages\Logger\Core\LogTransportManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\Transports\ConsoleTransport.cs" Link="Packages\Logger\Transports\ConsoleTransport.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\AnsiColorEnum.cs" Link="Packages\Logger\AnsiColorEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\Logger.cs" Link="Packages\Logger\Logger.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Logger\LogMessageBuilder.cs" Link="Packages\Logger\LogMessageBuilder.cs" />
+
+    <!-- Models -->
+    <Compile Include="..\WingifyFmeSdk\Models\Settings.cs" Link="Models\Settings.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Campaign.cs" Link="Models\Campaign.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Group.cs" Link="Models\Group.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Variation.cs" Link="Models\Variation.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Variable.cs" Link="Models\Variable.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Metric.cs" Link="Models\Metric.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Rule.cs" Link="Models\Rule.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Storage.cs" Link="Models\Storage.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Feature.cs" Link="Models\Feature.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Holdout.cs" Link="Models\Holdout.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\ImpactCampaign.cs" Link="Models\ImpactCampaign.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\User\GetFlag.cs" Link="Models\User\GetFlag.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\User\WingifyContext.cs" Link="Models\User\WingifyContext.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\User\GatewayService.cs" Link="Models\User\GatewayService.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\User\WingifyInitOptions.cs" Link="Models\User\WingifyInitOptions.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\EventArchQueryParams\RequestQueryParams.cs" Link="Models\Request\EventArchQueryParams\RequestQueryParams.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\EventArchQueryParams\SettingsQueryParams.cs" Link="Models\Request\EventArchQueryParams\SettingsQueryParams.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\Visitor\Visitor.cs" Link="Models\Request\Visitor\Visitor.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\Event.cs" Link="Models\Request\Event.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\EventArchData.cs" Link="Models\Request\EventArchData.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\EventArchPayload.cs" Link="Models\Request\EventArchPayload.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Request\Props.cs" Link="Models\Request\Props.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\Schemas\SettingsSchema.cs" Link="Models\Schemas\SettingsSchema.cs" />
+    <Compile Include="..\WingifyFmeSdk\Models\BatchEventData.cs" Link="Models\BatchEventData.cs" />
+
+    <!-- Packages -->
+    <Compile Include="..\WingifyFmeSdk\Packages\DecisionMaker\DecisionMaker.cs" Link="Packages\DecisionMaker\DecisionMaker.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Client\NetworkClient.cs" Link="Packages\NetworkLayer\Client\NetworkClient.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Client\PostRequestQueue.cs" Link="Packages\NetworkLayer\Client\PostRequestQueue.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Handlers\RequestHandler.cs" Link="Packages\NetworkLayer\Handlers\RequestHandler.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Manager\NetworkManager.cs" Link="Packages\NetworkLayer\Manager\NetworkManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Models\GlobalRequestModel.cs" Link="Packages\NetworkLayer\Models\GlobalRequestModel.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Models\RequestModel.cs" Link="Packages\NetworkLayer\Models\RequestModel.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\NetworkLayer\Models\ResponseModel.cs" Link="Packages\NetworkLayer\Models\ResponseModel.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Core\SegmentationManager.cs" Link="Packages\SegmentationEvaluator\Core\SegmentationManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Evaluators\SegmentEvaluator.cs" Link="Packages\SegmentationEvaluator\Evaluators\SegmentEvaluator.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Evaluators\SegmentOperandEvaluator.cs" Link="Packages\SegmentationEvaluator\Evaluators\SegmentOperandEvaluator.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Enums\SegmentOperandRegexEnum.cs" Link="Packages\SegmentationEvaluator\Enums\SegmentOperandRegexEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Enums\SegmentOperandValueEnum.cs" Link="Packages\SegmentationEvaluator\Enums\SegmentOperandValueEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Enums\SegmentOperatorValueEnum.cs" Link="Packages\SegmentationEvaluator\Enums\SegmentOperatorValueEnum.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Utils\SegmentUtil.cs" Link="Packages\SegmentationEvaluator\Utils\SegmentUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Storage\Connector.cs" Link="Packages\Storage\Connector.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\Storage\Storage.cs" Link="Packages\Storage\Storage.cs" />
+
+    <!-- Services -->
+    <Compile Include="..\WingifyFmeSdk\Services\CampaignDecisionService.cs" Link="Services\CampaignDecisionService.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\HooksManager.cs" Link="Services\HooksManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\LoggerService.cs" Link="Services\LoggerService.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\SettingsManager.cs" Link="Services\SettingsManager.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\StorageService.cs" Link="Services\StorageService.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\UrlService.cs" Link="Services\UrlService.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\BatchEventQueue.cs" Link="Services\BatchEventQueue.cs" />
+
+    <!-- Utils -->
+    <Compile Include="..\WingifyFmeSdk\Utils\BrandContext.cs" Link="Utils\BrandContext.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\CampaignUtil.cs" Link="Utils\CampaignUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\DataTypeUtil.cs" Link="Utils\DataTypeUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\DecisionUtil.cs" Link="Utils\DecisionUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\FunctionUtil.cs" Link="Utils\FunctionUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\GatewayServiceUtil.cs" Link="Utils\GatewayServiceUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\ImpressionUtil.cs" Link="Utils\ImpressionUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\LogMessageUtil.cs" Link="Utils\LogMessageUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\MegUtil.cs" Link="Utils\MegUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\NetworkUtil.cs" Link="Utils\NetworkUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\RuleEvaluationUtil.cs" Link="Utils\RuleEvaluationUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\SDKMetaUtil.cs" Link="Utils\SDKMetaUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\SettingsUtil.cs" Link="Utils\SettingsUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\UUIDUtils.cs" Link="Utils\UUIDUtils.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\UsageStatsUtil.cs" Link="Utils\UsageStatsUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\EventUtil.cs" Link="Utils\EventUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\SettingsJsonConverterUtil.cs" Link="Utils\SettingsJsonConverterUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\DebuggerServiceUtil.cs" Link="Utils\DebuggerServiceUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\UserIdUtil.cs" Link="Utils\UserIdUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\AliasingUtil.cs" Link="Utils\AliasingUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\HoldoutUtil.cs" Link="Utils\HoldoutUtil.cs" />
+
+    <!-- Main Classes -->
+    <Compile Include="..\WingifyFmeSdk\Wingify.cs" Link="Wingify.cs" />
+    <Compile Include="..\WingifyFmeSdk\WingifyBuilder.cs" Link="WingifyBuilder.cs" />
+    <Compile Include="..\WingifyFmeSdk\WingifyClient.cs" Link="WingifyClient.cs" />
+
+    <!-- APIs -->
+    <Compile Include="..\WingifyFmeSdk\Api\GetFlagApi.cs" Link="Api\GetFlagApi.cs" />
+    <Compile Include="..\WingifyFmeSdk\Api\SetAttributeApi.cs" Link="Api\SetAttributeApi.cs" />
+    <Compile Include="..\WingifyFmeSdk\Api\TrackEventApi.cs" Link="Api\TrackEventApi.cs" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Identifiable" Version="4.0.0" />
+    <PackageReference Include="murmurhash" Version="1.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Constants\" />
+    <Folder Include="Decorators\" />
+    <Folder Include="Enums\" />
+    <Folder Include="Interfaces\" />
+    <Folder Include="Logger\" />
+    <Folder Include="Models\" />
+    <Folder Include="Models\Request\" />
+    <Folder Include="Models\Request\Visitor\" />
+    <Folder Include="Models\User\" />
+    <Folder Include="Packages\" />
+    <Folder Include="Packages\DecisionMaker\" />
+    <Folder Include="Packages\Logger\" />
+    <Folder Include="Packages\Logger\Core\" />
+    <Folder Include="Packages\Logger\Enums\" />
+    <Folder Include="Packages\Logger\Transports\" />
+    <Folder Include="Packages\NetworkLayer\" />
+    <Folder Include="Packages\NetworkLayer\Client\" />
+    <Folder Include="Packages\NetworkLayer\Handlers\" />
+    <Folder Include="Packages\NetworkLayer\Manager\" />
+    <Folder Include="Packages\NetworkLayer\Models\" />
+    <Folder Include="Packages\SegmentationEvaluator\" />
+    <Folder Include="Packages\SegmentationEvaluator\Core\" />
+    <Folder Include="Packages\SegmentationEvaluator\Evaluators\" />
+    <Folder Include="Packages\SegmentationEvaluator\Enums\" />
+    <Folder Include="Packages\SegmentationEvaluator\Utils\" />
+    <Folder Include="Packages\Storage\" />
+    <Folder Include="Services\" />
+    <Folder Include="Utils\" />
+  </ItemGroup>
+
+<ItemGroup>
+    <EmbeddedResource Include="../WingifyFmeSdk/Packages/Logger/Messages/debug-messages.json">
+        <LogicalName>WingifyFmeSdk.Packages.Logger.Messages.debug-messages.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../WingifyFmeSdk/Packages/Logger/Messages/info-messages.json">
+        <LogicalName>WingifyFmeSdk.Packages.Logger.Messages.info-messages.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../WingifyFmeSdk/Packages/Logger/Messages/error-messages.json">
+        <LogicalName>WingifyFmeSdk.Packages.Logger.Messages.error-messages.json</LogicalName>
+    </EmbeddedResource>
+</ItemGroup>
+
+</Project>

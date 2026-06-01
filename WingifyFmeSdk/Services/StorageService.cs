@@ -1,0 +1,92 @@
+#pragma warning disable 1587
+/**
+ * Copyright 2024-2026 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma warning restore 1587
+
+using System;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using WingifyFmeSdk.Models.User;
+using WingifyFmeSdk.Packages.Logger.Enums;
+using WingifyFmeSdk.Packages.Storage;
+using WingifyFmeSdk.Packages.Logger.Core;
+using WingifyFmeSdk.Enums;
+using WingifyFmeSdk.Utils;
+
+namespace WingifyFmeSdk.Services
+{
+    public class StorageService
+    {
+        /// <summary>
+        /// Get data from storage
+        /// </summary>
+        /// <param name="featureKey"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public Dictionary<string, object> GetDataInStorage(string featureKey, WingifyContext context)
+        {
+            var storageInstance = Storage.Instance.GetConnector() as Connector;
+            if (storageInstance == null)
+            {
+                return null;
+            }
+
+           try
+            {
+                var result = storageInstance.Get(featureKey, context.Id);
+                if (result == null)
+                {
+                    return null;
+                }
+
+                // Normalize the returned data to handle any JSON library the customer may use.
+                // Serialize the result to a JSON string
+                string jsonString = System.Text.Json.JsonSerializer.Serialize(result);
+                // Deserialize the JSON string to a dictionary
+                return JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString);
+            }
+            catch (System.Exception e)
+            {
+                LogManager.GetInstance().ErrorLog("STORED_DATA_ERROR", new Dictionary<string, string> { { "err", FunctionUtil.GetFormattedErrorMessage(e) } }, new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() } });
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Set data in storage
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public bool SetDataInStorage(Dictionary<string, object> data)
+        {
+            var storageInstance = Storage.Instance.GetConnector() as Connector;
+            if (storageInstance == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                storageInstance.Set(data);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                return false;
+            }
+        }
+    }
+}
