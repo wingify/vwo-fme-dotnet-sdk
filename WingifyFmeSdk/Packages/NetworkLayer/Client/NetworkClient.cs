@@ -86,6 +86,23 @@ namespace WingifyFmeSdk.Packages.NetworkLayer.Client
         }
 
         /// <summary>
+        /// Determines whether a response Content-Type carries a JSON body the SDK can parse.
+        /// The settings endpoint normally responds with "application/json", but data-residency
+        /// (region-prefixed) settings endpoints respond with "application/javascript" for the same
+        /// JSON body. Both are accepted so background settings polling succeeds for those accounts.
+        /// See https://github.com/wingify/vwo-fme-dotnet-sdk/issues/8
+        /// </summary>
+        public static bool IsJsonCompatibleContentType(string contentType)
+        {
+            if (string.IsNullOrEmpty(contentType))
+            {
+                return false;
+            }
+
+            return contentType.Contains("application/json") || contentType.Contains("application/javascript");
+        }
+
+        /// <summary>
         /// Makes a GET request to the given URL with retry logic
         /// </summary>
         /// <param name="requestModel"></param>
@@ -145,7 +162,7 @@ namespace WingifyFmeSdk.Packages.NetworkLayer.Client
 
                         string contentType = response.ContentType;
 
-                        if (statusCode >= ConstantsNamespace.Constants.HTTP_SUCCESS_MIN && statusCode <= ConstantsNamespace.Constants.HTTP_SUCCESS_MAX && contentType.Contains("application/json"))
+                        if (statusCode >= ConstantsNamespace.Constants.HTTP_SUCCESS_MIN && statusCode <= ConstantsNamespace.Constants.HTTP_SUCCESS_MAX && IsJsonCompatibleContentType(contentType))
                         {
                             string responseData = reader.ReadToEnd();
                             responseModel.SetData(responseData);
