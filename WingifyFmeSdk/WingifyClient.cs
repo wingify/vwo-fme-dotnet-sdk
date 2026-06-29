@@ -273,7 +273,7 @@ namespace WingifyFmeSdk
         /// <param name="attributeKey">The key of the attribute to set</param>
         /// <param name="attributeValue">The value of the attribute to set</param>
         /// <param name="context">User context</param>
-        public void SetAttribute(string attributeKey, string attributeValue, WingifyContext context = null)
+        public void SetAttribute(string attributeKey, dynamic attributeValue, WingifyContext context = null)
         {
             string apiName = "setAttribute";
             try
@@ -285,10 +285,11 @@ namespace WingifyFmeSdk
                     throw new ArgumentException("TypeError: attributeKey should be a string");
                 }
 
-                if (!DataTypeUtil.IsString(attributeValue))
+                // Only string, int, and bool are supported attribute value types; float, double are intentionally rejected
+                if (!(attributeValue is string || attributeValue is int || attributeValue is bool))
                 {
-                    LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", "attributeValue" }, { "type", DataTypeUtil.GetType(attributeValue) }, { "correctType", "String" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
-                    throw new ArgumentException("TypeError: attributeValue should be a string");
+                    LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", "attributeValue" }, { "type", DataTypeUtil.GetType((object)attributeValue) }, { "correctType", "String, Number, Boolean" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
+                    throw new ArgumentException("TypeError: attributeValue should be a string, integer, or boolean");
                 }
 
                 if (context == null || string.IsNullOrEmpty(context.Id))
@@ -341,18 +342,18 @@ namespace WingifyFmeSdk
                     string key = attribute.Key;
                     var value = attribute.Value;
 
-                    // Allow only primitive types: bool, string, int, float, double
-                    if (!(value is bool || value is string || value is int || value is float || value is double))
+                    // Only string, int, and bool are supported attribute value types; float, double are intentionally rejected
+                    if (!(value is string || value is int || value is bool))
                     {
-                        LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", key }, { "type", value?.GetType().ToString() ?? "null" }, { "correctType", "bool, string, int, float, double" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
+                        LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", key }, { "type", value?.GetType().ToString() ?? "null" }, { "correctType", "string, int, bool" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
 
-                        throw new ArgumentException($"Invalid attribute type for key \"{key}\". Expected bool, string, int, float, or double, but got {value?.GetType()}");
+                        throw new ArgumentException($"Invalid attribute type for key \"{key}\". Expected string, int, or bool, but got {value?.GetType()}");
                     }
 
                     // Reject arrays and complex objects explicitly
-                    if (value is Array || (value is object && !(value is string || value is bool || value is int || value is float || value is double)))
+                    if (value is Array || (value is object && !(value is string || value is int || value is bool)))
                     {
-                        LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", key }, { "type", value?.GetType().ToString() ?? "null" }, { "correctType", "bool, string, int, float, double" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
+                        LogManager.GetInstance().ErrorLog("API_INVALID_PARAM", new Dictionary<string, string> { { "apiName", apiName }, { "key", key }, { "type", value?.GetType().ToString() ?? "null" }, { "correctType", "string, int, bool" } }, new Dictionary<string, object> { { "an", ApiEnum.SET_ATTRIBUTE.GetValue() } }, false);
 
                         throw new ArgumentException($"Invalid attribute value for key \"{key}\". Arrays and complex objects are not supported.");
                     }

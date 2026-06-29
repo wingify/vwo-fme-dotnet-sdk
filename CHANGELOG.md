@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.55.1] - 2026-06-29
+
+### Fixed
+
+- `setAttribute` now accepts only `string`, `int`, and `bool` values; `float` and `double` are rejected
+- Event requests now correctly route through `ProxyUrl` (previously only settings fetch was proxied)
+- Polling no longer triggers a settings update when settings are unchanged (fixed incorrect equality check)
+- Settings fetch URL no longer includes `collectionPrefix`, fixing polling for EU/regional accounts
+- `DataTypeUtil.IsObject` no longer misclassifies primitives as `Object` in error logs
+
 ## [1.55.0] - 2026-06-16
 
 ### Added

@@ -332,8 +332,14 @@ namespace WingifyFmeSdk
                 return this;
             }
 
+            // IsBatchingDisabled takes priority over BatchEventData — aligns with Node SDK
+            if (this.options.IsBatchingDisabled)
+            {
+                LoggerService.Log(LogLevelEnum.DEBUG,"EVENT_BATCHING_NOT_INITIALIZED", null);
+                IsBatchingUsed = false;
+            }
             // Check if batch event data is provided in options
-            if (this.options?.BatchEventData != null)
+            else if (this.options?.BatchEventData != null)
             {
                 int eventsPerRequest = this.options.BatchEventData.EventsPerRequest;
                 int requestTimeInterval = this.options.BatchEventData.RequestTimeInterval;
@@ -376,11 +382,6 @@ namespace WingifyFmeSdk
                 IsBatchingUsed = true;
 
                 LoggerService.Log(LogLevelEnum.DEBUG,"EVENT_BATCHING_INITIALIZED", null);
-            } 
-            else if (this.options.IsBatchingDisabled)
-            {
-                LoggerService.Log(LogLevelEnum.DEBUG,"EVENT_BATCHING_NOT_INITIALIZED", null);
-                IsBatchingUsed = false;
             }
             else
             {
@@ -436,9 +437,9 @@ namespace WingifyFmeSdk
                     string latestSettings = GetSettings(true);
                     if (originalSettings != null && latestSettings != null)
                     {
-                        var latestSettingJsonNode = Newtonsoft.Json.JsonConvert.DeserializeObject(latestSettings);
-                        var originalSettingsJsonNode = Newtonsoft.Json.JsonConvert.DeserializeObject(originalSettings);
-                        if (!latestSettingJsonNode.Equals(originalSettingsJsonNode))
+                        var latestSettingJsonNode = Newtonsoft.Json.Linq.JToken.Parse(latestSettings);
+                        var originalSettingsJsonNode = Newtonsoft.Json.Linq.JToken.Parse(originalSettings);
+                        if (!Newtonsoft.Json.Linq.JToken.DeepEquals(latestSettingJsonNode, originalSettingsJsonNode))
                         {
                             originalSettings = latestSettings;
                             LoggerService.Log(LogLevelEnum.INFO, "POLLING_SET_SETTINGS", null);
@@ -449,7 +450,7 @@ namespace WingifyFmeSdk
                         }
                         else
                         {
-                            LoggerService.Log(LogLevelEnum.INFO, "POLLING_NO_CHANGE", null);
+                            LoggerService.Log(LogLevelEnum.INFO, "POLLING_NO_CHANGE_IN_SETTINGS", null);
                         }
                     }
                 }

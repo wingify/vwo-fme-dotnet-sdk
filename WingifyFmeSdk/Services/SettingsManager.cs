@@ -243,13 +243,14 @@ namespace WingifyFmeSdk.Services
             options.Add("sn", ConstantsNamespace.Constants.SDK_NAME);
             options.Add("sv", SDKMetaUtil.GetSdkVersion());
 
+            // Settings endpoint must never include collectionPrefix
             string path = isViaWebhook 
                 ? ConstantsNamespace.Constants.WEBHOOK_SETTINGS_ENDPOINT 
                 : ConstantsNamespace.Constants.SETTINGS_ENDPOINT;
 
             try
             {
-                RequestModel request = new RequestModel(SettingsManager.GetInstance().hostname, "GET", UrlService.GetEndpointWithCollectionPrefix(path, WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided), options, null, null, this.protocol, port, retryConfig);
+                RequestModel request = new RequestModel(SettingsManager.GetInstance().hostname, "GET", path, options, null, null, this.protocol, port, retryConfig);
                 request.SetTimeout(networkTimeout);
 
                 // start timer for settings fetch

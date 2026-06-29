@@ -82,10 +82,19 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Core
             var holdouts = settings.Holdouts ?? new List<Holdout>();
             bool isGatewayServiceRequiredForHoldouts = holdouts.Any(holdout => holdout.IsGatewayServiceRequired);
 
-            // Call gateway service if required for segmentation OR if gateway service is provided and user agent is available
-            bool shouldCallGatewayService = ((feature.IsGatewayServiceRequired || isGatewayServiceRequiredForHoldouts) && !SettingsManager.GetInstance().hostname.Contains(ConstantsNamespace.Constants.HOST_NAME)) ||
-                                           (!SettingsManager.GetInstance().hostname.Contains(ConstantsNamespace.Constants.HOST_NAME) && (!string.IsNullOrEmpty(context.UserAgent) || !string.IsNullOrEmpty(context.IpAddress)));
-            
+            bool segmentationRequiresGateway = feature.IsGatewayServiceRequired || isGatewayServiceRequiredForHoldouts;
+
+            // Log an error if segmentation requires gateway but it is not configured; flow continues and segmentation will be skipped
+            if (segmentationRequiresGateway && !SettingsManager.GetInstance().isGatewayServiceProvided)
+            {
+                LogManager.GetInstance().ErrorLog("GATEWAY_SERVICE_REQUIRED_BUT_NOT_CONFIGURED", new Dictionary<string, string>(), new Dictionary<string, object>(), false);
+            }
+
+            // get-user-details must only be called when:
+            // 1. GatewayService is explicitly configured (never ProxyUrl)
+            // 2. AND segmentation on this feature or a holdout actually requires it
+            bool shouldCallGatewayService = SettingsManager.GetInstance().isGatewayServiceProvided && segmentationRequiresGateway;
+
             if (shouldCallGatewayService)
             {
                 var queryParams = new Dictionary<string, string>();

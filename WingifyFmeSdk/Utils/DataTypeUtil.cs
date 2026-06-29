@@ -27,7 +27,7 @@ namespace WingifyFmeSdk.Utils
     {
         public static bool IsObject(object val)
         {
-            return val != null && !(val is Array) && !(val is Delegate) && !(val is string) && !(val is DateTime);
+            return val != null && !val.GetType().IsValueType && !(val is string) && !(val is Array) && !(val is Delegate);
         }
 
         public static bool IsArray(object val)

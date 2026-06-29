@@ -33,6 +33,7 @@
   "STORED_DATA_ERROR": "Error in getting data from storage.",
   "STORING_DATA_ERROR": "Key:{featureKey} is not valid. Not able to store data into storage",
   "INVALID_GATEWAY_URL": "Please provide a valid URL for {brandName} Gateway Service while initializing the SDK",
+  "GATEWAY_SERVICE_REQUIRED_BUT_NOT_CONFIGURED": "Feature/Holdout has segmentation that requires {brandName} Gateway Service, but it is not configured. Segmentation will be skipped. Configure GatewayService in init options to enable it.",
   "NETWORK_CALL_FAILED": "Error occurred while sending {method} request.",
   "NETWORK_CALL_RETRY_FAILED": "Max retries reached. Request failed for {endPoint}, Error: {err}",
   "USER_ID_NULL_OR_EMPTY": "User ID passed cannot be null or empty",

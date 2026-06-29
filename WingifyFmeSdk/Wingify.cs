@@ -168,7 +168,7 @@ namespace WingifyFmeSdk
             {
                 var settingsDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
                 
-                if (settingsDict != null && settingsDict.ContainsKey("usageStatsAccountId"))
+                if (settingsDict != null && settingsDict.ContainsKey("usageStatsAccountId") && settingsDict["usageStatsAccountId"] != null)
                 {
                     usageStatsAccountId = Convert.ToInt64(settingsDict["usageStatsAccountId"]);
                 }

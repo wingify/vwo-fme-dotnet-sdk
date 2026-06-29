@@ -377,7 +377,8 @@ namespace WingifyFmeSdk.Utils
             {
                 NetworkManager.GetInstance().AttachClient(null,NetworkManager.GetInstance().GetRetryConfig());
                 var headers = CreateHeaders(userAgent, ipAddress);
-                var request = new RequestModel((WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME), "POST", UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl(), WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port, NetworkManager.GetInstance().GetRetryConfig());
+                // Route through configured host when either GatewayService or ProxyUrl is provided; otherwise send direct to VWO
+                var request = new RequestModel((WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided || WingifyFmeSdk.Services.SettingsManager.GetInstance().isProxyUrlProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME), "POST", UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl(), WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided), properties, payload, headers, SettingsManager.GetInstance().Protocol, SettingsManager.GetInstance().Port, NetworkManager.GetInstance().GetRetryConfig());
 
                 // Derive event name from query properties (en key)
                 string eventName = null;
@@ -531,9 +532,9 @@ namespace WingifyFmeSdk.Utils
                 };
 
 
-                // Create the RequestModel with necessary data
+                // Route through configured host when either GatewayService or ProxyUrl is provided; otherwise send direct to VWO
                 var requestModel = new RequestModel(
-                    (WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME),
+                    (WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided || WingifyFmeSdk.Services.SettingsManager.GetInstance().isProxyUrlProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME),
                     "POST",
                     UrlService.GetEndpointWithCollectionPrefix(UrlEnum.BATCH_EVENTS.GetUrl(), WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided),
                     query,
@@ -781,7 +782,8 @@ namespace WingifyFmeSdk.Utils
 
         private static string GenerateEventUrl()
         {
-            return ConstantsNamespace.Constants.HTTPS_PROTOCOL + "://" + (WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME) + UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl(), WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided);
+            // Route through configured host when either GatewayService or ProxyUrl is provided; otherwise send direct to VWO
+            return ConstantsNamespace.Constants.HTTPS_PROTOCOL + "://" + (WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided || WingifyFmeSdk.Services.SettingsManager.GetInstance().isProxyUrlProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME) + UrlService.GetEndpointWithCollectionPrefix(UrlEnum.EVENTS.GetUrl(), WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided);
         }
 
         private static string GenerateMsgId(string uuid)
@@ -1035,7 +1037,8 @@ namespace WingifyFmeSdk.Utils
         public static object SendEvent(Dictionary<string, string> properties, Dictionary<string, object> payload, string eventName)
         {
             NetworkManager.GetInstance().AttachClient(null, NetworkManager.GetInstance().GetRetryConfig()); // Use enhanced concurrent connections
-            var baseUrl = (WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME);
+            // Route through configured host when either GatewayService or ProxyUrl is provided; otherwise send direct to VWO
+            var baseUrl = (WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided || WingifyFmeSdk.Services.SettingsManager.GetInstance().isProxyUrlProvided ? WingifyFmeSdk.Services.SettingsManager.GetInstance().hostname : ConstantsNamespace.Constants.EVENTS_HOST_NAME);
             var port = SettingsManager.GetInstance().Port;
             var protocol = SettingsManager.GetInstance().Protocol;
             var retryConfig = new Dictionary<string, object>(NetworkManager.GetInstance().GetRetryConfig());
@@ -1045,11 +1048,16 @@ namespace WingifyFmeSdk.Utils
                 retryConfig[ConstantsNamespace.Constants.RETRY_SHOULD_RETRY] = false;
             }
 
+            // SDK-internal events (logs, usage stats, debugger) go direct to VWO only when neither proxy nor gateway is configured.
+            // When ProxyUrl or GatewayService is configured, all traffic (including internal events) routes through the configured host — aligns with Node SDK.
             if(eventName == EventEnum.LOG_EVENT.GetValue() || eventName == EventEnum.USAGE_STATS_EVENT.GetValue() || eventName == EventEnum.DEBUGGER_EVENT.GetValue())
             {
-                baseUrl = ConstantsNamespace.Constants.EVENTS_HOST_NAME;
-                protocol = "https";
-                port = 443;
+                if (!WingifyFmeSdk.Services.SettingsManager.GetInstance().isProxyUrlProvided && !WingifyFmeSdk.Services.SettingsManager.GetInstance().isGatewayServiceProvided)
+                {
+                    baseUrl = ConstantsNamespace.Constants.EVENTS_HOST_NAME;
+                    protocol = "https";
+                    port = 443;
+                }
             }
 
             try

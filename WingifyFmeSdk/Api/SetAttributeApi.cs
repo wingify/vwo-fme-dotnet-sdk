@@ -31,7 +31,8 @@ namespace WingifyFmeSdk.Api
             CreateAndSendImpressionForSetAttribute(settings, attributes, context);
         }
 
-        public static void SetAttribute(Settings settings, string attributeKey, string attributeValue, WingifyContext context)
+        // attributeValue is dynamic to accept both string and int without requiring overloads
+        public static void SetAttribute(Settings settings, string attributeKey, dynamic attributeValue, WingifyContext context)
         {
             Dictionary<string, dynamic> attributes = new Dictionary<string, dynamic>
             {
