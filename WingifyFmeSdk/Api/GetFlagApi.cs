@@ -43,6 +43,9 @@ namespace WingifyFmeSdk.Api
             GetFlag getFlag = new GetFlag();
             bool shouldCheckForExperimentsRules = false;
 
+            // Flag for usage tracking - false if no variation shown call is sent
+            bool isVariationShownFired = false;
+
             Dictionary<string, object> passedRulesInformation = new Dictionary<string, object>();
             Dictionary<string, object> evaluatedFeatureMap = new Dictionary<string, object>();
             List<int> notInHoldoutIds = new List<int>();
@@ -104,7 +107,12 @@ namespace WingifyFmeSdk.Api
                                 List<Holdout> matchedHoldouts = matchedHoldoutsResult.Item1 ?? new List<Holdout>();
                                 List<Holdout> notMatchedHoldouts = matchedHoldoutsResult.Item2 ?? new List<Holdout>();
                                 List<Dictionary<string, object>> holdoutPayloads = matchedHoldoutsResult.Item3 ?? new List<Dictionary<string, object>>();
-                                
+                                // Set isVariationShownFired to true if any holdout payloads are found
+                                if (holdoutPayloads.Count > 0)
+                                {
+                                    isVariationShownFired = true;
+                                }
+
                                 // updatedHoldoutIds is the array of holdout ids for which user became part of the holdouts
                                 List<int> updatedHoldoutIds = storedIsInHoldoutId.Concat(matchedHoldouts.Select(matchedHoldout => matchedHoldout.Id)).ToList();
                                 // updatedNotInHoldoutIds is the array of holdout ids for which user became not part of the holdouts
@@ -145,6 +153,12 @@ namespace WingifyFmeSdk.Api
                                 }
 
                                 getFlag.SetIsEnabled(false);
+                                // case: stored holdout found but no variationShown call was sent, create and send impression for usage tracking
+                                if (settings.IsTrackingUsageEnabled && !isVariationShownFired)
+                                {
+                                    ImpressionUtil.CreateAndSendImpressionForUsageTracking(settings, featureKey, context);
+                                }
+
                                 return getFlag;
                             }
                         }
@@ -168,15 +182,30 @@ namespace WingifyFmeSdk.Api
                             decision["isUserPartOfCampaign"] = true;
 
                             // network calls for holdouts that are newly added in settings and are not present in storage
-                            HoldoutUtil.SendNetworkCallsForNotInHoldouts(
+                            List<int> updatedNotInHoldoutIds = HoldoutUtil.SendNetworkCallsForNotInHoldouts(
                                 settings,
                                 feature,
                                 context,
                                 decision,
                                 storedData
                             );
+
+                            // if updatedNotInHoldoutIds count is greater than storedNotInHoldoutId count, then it means that there are some new holdouts that are added in settings and are not present in storage, so set isVariationShownFired to true
+                            if (updatedNotInHoldoutIds.Count > (storedData?.NotInHoldoutId?.Count ?? 0))
+                            {
+                                isVariationShownFired = true;
+                            }
+
                             getFlag.SetIsEnabled(true);
                             getFlag.Variables = variation.Variables;
+
+                            // Case: Feature found in storage
+                            // Send usage tracking for cached experiment decision if usage tracking is enabled
+                            if (settings.IsTrackingUsageEnabled && !isVariationShownFired)
+                            {
+                                ImpressionUtil.CreateAndSendImpressionForUsageTracking(settings, featureKey, context);
+                            }
+
                             return getFlag;
                         }
                     }
@@ -207,6 +236,11 @@ namespace WingifyFmeSdk.Api
                             decision,
                             storedData
                         );
+                        // if updatedNotInHoldoutIds count is greater than storedNotInHoldoutId count, then it means that there are some new holdouts that are added in settings and are not present in storage, so set isVariationShownFired to true
+                        if (updatedNotInHoldoutIds.Count > (storedData?.NotInHoldoutId?.Count ?? 0))
+                        {
+                            isVariationShownFired = true;
+                        }
                         
                         // push/append the updated not in holdout ids to the notInHoldoutIds array
                         notInHoldoutIds.AddRange(updatedNotInHoldoutIds);
@@ -234,6 +268,14 @@ namespace WingifyFmeSdk.Api
             {
                 LogManager.GetInstance().ErrorLog("FEATURE_NOT_FOUND", new Dictionary<string, string> { { "featureKey", featureKey } }, debugEventProps);
                 getFlag.SetIsEnabled(false);
+
+                // Case: Feature not found
+                // If usage tracking is enabled, send usage tracking impression
+                if (settings.IsTrackingUsageEnabled)
+                {
+                    ImpressionUtil.CreateAndSendImpressionForUsageTracking(settings, featureKey, context);
+                }
+
                 return getFlag;
             }
 
@@ -247,6 +289,12 @@ namespace WingifyFmeSdk.Api
                 List<Holdout> matchedHoldouts = matchedHoldoutsResult.Item1 ?? new List<Holdout>();
                 List<Holdout> notMatchedHoldouts = matchedHoldoutsResult.Item2 ?? new List<Holdout>();
                 List<Dictionary<string, object>> holdoutPayloads = matchedHoldoutsResult.Item3 ?? new List<Dictionary<string, object>>();
+
+                // Set isVariationShownFired to true if any holdout payloads are found
+                if (holdoutPayloads.Count > 0)
+                {
+                    isVariationShownFired = true;
+                }
 
                 decision["isPartOfHoldout"] = matchedHoldouts != null && matchedHoldouts.Count > 0;
                 if ( (matchedHoldouts != null && matchedHoldouts.Count > 0) || (notMatchedHoldouts != null && notMatchedHoldouts.Count > 0)) {
@@ -313,6 +361,12 @@ namespace WingifyFmeSdk.Api
                     }
 
                     getFlag.SetIsEnabled(false);
+
+                    if (settings.IsTrackingUsageEnabled && !isVariationShownFired)
+                    {
+                        ImpressionUtil.CreateAndSendImpressionForUsageTracking(settings, featureKey, context);
+                    }
+
                     return getFlag;
                 }
                 else
@@ -392,6 +446,9 @@ namespace WingifyFmeSdk.Api
                         shouldCheckForExperimentsRules = true;
                         UpdateIntegrationsDecisionObject(passedRolloutCampaign, variation, passedRulesInformation, decision);
                         ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, passedRolloutCampaign.Id, variation.Id, context, featureKey);
+
+                        // set is_variation_shown_fired to true as the rollout impression is sent
+                        isVariationShownFired = true;
                     }
                 }
             }
@@ -422,6 +479,10 @@ namespace WingifyFmeSdk.Api
                         }
                         else
                         {
+                            // set is_variation_shown_fired to true as the experiment impression is sent (for whitelisted user)
+                            // this prevents sending usage tracking impression for the experiment campaign when checked at the bottom
+                            isVariationShownFired = true;
+
                             getFlag.SetIsEnabled(true);
                             decision["isUserPartOfCampaign"] = true;
                             getFlag.Variables = whitelistedObject.Variables;
@@ -445,6 +506,9 @@ namespace WingifyFmeSdk.Api
                         getFlag.Variables = variation.Variables;
                         UpdateIntegrationsDecisionObject(campaign, variation, passedRulesInformation, decision);
                         ImpressionUtil.CreateAndSendImpressionForVariationShown(settings, campaign.Id, variation.Id, context, featureKey);
+
+                        // set is_variation_shown_fired to true as the experiment impression is sent.
+                        isVariationShownFired = true;
                     }
                 }
             }
@@ -512,7 +576,18 @@ namespace WingifyFmeSdk.Api
                     context,
                     featureKey
                 );
+
+                // set is_variation_shown_fired to true as the impact analysis impression is sent.
+                isVariationShownFired = true;
             }
+
+            // Send usage tracking call when no primary variationShown event was dispatched.
+            // If a primary event was fired, the server already has the usage tracking signal.
+            if (settings.IsTrackingUsageEnabled && !isVariationShownFired)
+            {
+                ImpressionUtil.CreateAndSendImpressionForUsageTracking(settings, featureKey, context);
+            }
+
             return getFlag;
         }
 

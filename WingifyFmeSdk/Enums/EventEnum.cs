@@ -27,7 +27,8 @@ namespace WingifyFmeSdk.Enums
         LOG_EVENT,
         SDK_INIT_EVENT,
         USAGE_STATS_EVENT,
-        DEBUGGER_EVENT
+        DEBUGGER_EVENT,
+        TRACK_USAGE
     }
 
     public static class EventEnumExtensions
@@ -48,6 +49,8 @@ namespace WingifyFmeSdk.Enums
                     return "vwo_sdkUsageStats";
                 case EventEnum.DEBUGGER_EVENT:
                     return "vwo_sdkDebug";
+                case EventEnum.TRACK_USAGE:
+                    return "vwo_feTrackUsage";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(eventEnum), eventEnum, null);
             }

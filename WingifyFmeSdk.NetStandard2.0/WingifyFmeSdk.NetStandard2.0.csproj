@@ -6,7 +6,7 @@
     <AssemblyName>WingifyFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>Wingify.FME.Sdk</PackageId>
-    <Version>1.50.0</Version>
+    <Version>1.55.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>

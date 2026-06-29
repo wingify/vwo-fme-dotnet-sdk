@@ -36,6 +36,14 @@ namespace WingifyFmeSdk.Models
         private int version;
         private string collectionPrefix;
         private List<Holdout> holdouts;
+        private bool isTrackingUsageEnabled = false;
+
+        [JsonProperty("isMAU")]
+        public bool IsTrackingUsageEnabled
+        {
+            get { return isTrackingUsageEnabled; }
+            set { isTrackingUsageEnabled = value; }
+        }
 
         [JsonProperty("holdouts")]
         [JsonConverter(typeof(EmptyObjectToArrayConverter<Holdout>))]

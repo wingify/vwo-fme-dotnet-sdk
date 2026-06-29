@@ -24,6 +24,9 @@ using WingifyFmeSdk.Models;
 using WingifyFmeSdk.Models.User;
 using WingifyFmeSdk.Utils;
 using ConstantsNamespace = WingifyFmeSdk.Constants;
+using WingifyFmeSdk.Packages.Logger.Core;
+using WingifyFmeSdk.Packages.Logger.Enums;
+using WingifyFmeSdk.Services;
 
 namespace WingifyFmeSdk.Utils
 {
@@ -148,6 +151,50 @@ namespace WingifyFmeSdk.Utils
             {
                 var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.VARIATION_SHOWN.GetValue(), context.UserAgent, context.IpAddress);
                 NetworkUtil.SendPostApiRequest(properties, payload, context.UserAgent, context.IpAddress, campaignInfo);
+            }
+        }
+
+        /// <summary>
+        /// Creates and sends an impression event for usage tracking.
+        /// </summary>
+        /// <param name="settings">The SDK settings.</param>
+        /// <param name="featureKey">The feature key.</param>
+        /// <param name="context">The Wingify context.</param>
+        /// <summary>
+        /// Creates and sends an impression for usage tracking.
+        /// </summary>
+        /// <param name="settings">The settings object containing configuration details.</param>
+        /// <param name="featureKey">The feature key associated with the usage tracking event.</param>
+        /// <param name="context">The user context containing user details and context variables.</param>
+        public static void CreateAndSendImpressionForUsageTracking(Settings settings, string featureKey, WingifyContext context)
+        {
+            // Get the specific payload formatted for usage tracking (vwo_feTrackUsage)
+            var payload = NetworkUtil.GetUsageTrackingPayloadData(
+                settings,
+                EventEnum.TRACK_USAGE.GetValue(),
+                context
+            );
+
+            // Log that the usage tracking call is about to be dispatched
+            LoggerService.Log(LogLevelEnum.INFO, "USAGE_TRACKING_DISPATCHED", new Dictionary<string, string>
+            {
+                { "accountId", settings.AccountId.ToString() },
+                { "userId", context.Id },
+                { "featureKey", featureKey }
+            });
+
+            // Dispatch the payload based on whether event batching is enabled
+            var vwoInstance = WingifyClient.GetInstance();
+            if (vwoInstance.BatchEventQueue != null)
+            {
+                // Enqueue the payload if batching is configured
+                vwoInstance.BatchEventQueue.Enqueue(payload);
+            }
+            else
+            {
+                // Dispatch directly over the network if batching is disabled
+                var queryParams = NetworkUtil.GetEventsBaseProperties(EventEnum.TRACK_USAGE.GetValue(), context.UserAgent, context.IpAddress);
+                NetworkUtil.SendPostApiRequest(queryParams, payload, context.UserAgent, context.IpAddress, null);
             }
         }
 

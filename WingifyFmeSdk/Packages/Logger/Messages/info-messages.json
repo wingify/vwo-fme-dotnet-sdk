@@ -34,5 +34,6 @@
   "USER_IN_HOLDOUT_GROUP": "User {userId} is in holdout group {holdoutGroupName} for feature {featureKey} - feature excluded",
   "USER_NOT_EXCLUDED_DUE_TO_HOLDOUT": "User ID:{userId} is not excluded from feature:{featureKey} due to any holdout groups",
   "HOLDOUT_SEGMENTATION_SKIP": "No segments found for holdout with id: {holdoutId} for user ID:{userId}; Hence skipping segmentation.",
-  "SEGMENTATION_PASSED_HOLDOUT": "Segmentation passed for holdout ID:{holdoutId} for user ID:{userId}"
+  "SEGMENTATION_PASSED_HOLDOUT": "Segmentation passed for holdout ID:{holdoutId} for user ID:{userId}",
+  "USAGE_TRACKING_DISPATCHED": "FE track usage call dispatched for Account ID:{accountId}, User ID:{userId}, and feature key:{featureKey}"
 }

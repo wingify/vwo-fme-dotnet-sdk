@@ -664,6 +664,76 @@ namespace WingifyFmeSdk.Utils
             return ConvertEventArchPayloadToDictionary(properties);
         }
 
+        /// <summary>
+        /// Constructs the payload for explicit usage tracking event.
+        /// </summary>
+        /// <param name="settings">The settings object</param>
+        /// <param name="eventName">The name of the event</param>
+        /// <param name="context">The Wingify context</param>
+        /// <returns>The constructed payload with required fields.</returns>
+        /// <summary>
+        /// Constructs the payload for explicit usage tracking events.
+        /// </summary>
+        /// <param name="settings">The settings object containing the configuration.</param>
+        /// <param name="eventName">The name of the event.</param>
+        /// <param name="context">The user context model.</param>
+        /// <returns>The constructed payload with required fields.</returns>
+        public static Dictionary<string, object> GetUsageTrackingPayloadData(Settings settings, string eventName, WingifyContext context)
+        {
+            // Base properties with common data
+            var properties = GetEventBasePayload(
+                settings,
+                context.Id,
+                eventName,
+                context.UserAgent,
+                context.IpAddress
+            );
+
+            // Add session ID if available
+            if (context.VwoSessionId != null)
+            {
+                properties.D.SessionId = context.VwoSessionId.Value;
+            }
+
+            // Set message and visitor IDs if a UUID is provided in the context
+            if (!string.IsNullOrEmpty(context.VwoUuid))
+            {
+                properties.D.MsgId = GenerateMsgId(context.VwoUuid);
+                properties.D.VisId = context.VwoUuid;
+            }
+
+            // Append usage statistics to the event metadata if they exist
+            var usageStats = UsageStatsUtil.GetInstance().GetUsageStats();
+            if (usageStats != null && usageStats.Count > 0)
+            {
+                properties.D.Event.Props.VwoMeta = usageStats;
+            }
+
+            LoggerService.Log(LogLevelEnum.DEBUG, "IMPRESSION_FOR_USAGE_TRACKING", new Dictionary<string, string>
+            {
+                { "accountId", settings.AccountId.ToString() },
+                { "userId", context.Id }
+            });
+
+            var payload = ConvertEventArchPayloadToDictionary(properties);
+
+            // Strip out properties that are not relevant for a usage tracking call
+            // Ensure id, variation, and isFirst are NOT set
+            if (payload.TryGetValue("d", out var dObj) && dObj is Dictionary<string, object> dDict)
+            {
+                if (dDict.TryGetValue("event", out var eventObj) && eventObj is Dictionary<string, object> eventDict)
+                {
+                    if (eventDict.TryGetValue("props", out var propsObj) && propsObj is Dictionary<string, object> propsDict)
+                    {
+                        propsDict.Remove("id");
+                        propsDict.Remove("variation");
+                        propsDict.Remove("isFirst");
+                    }
+                }
+            }
+
+            return RemoveNullValues(payload);
+        }
 
         /// <summary>
         /// Removes all the null values from the dictionary
