@@ -38,7 +38,8 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Enums
         FEATURE_ID,
         IP,
         BROWSER_VERSION,
-        OS_VERSION
+        OS_VERSION,
+        WEB_CAMPAIGN_VARIATION
     }
 
     public static class SegmentOperatorValueEnumExtensions
@@ -86,6 +87,8 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Enums
                     return "browser_version";
                 case SegmentOperatorValueEnum.OS_VERSION:
                     return "os_version";
+                case SegmentOperatorValueEnum.WEB_CAMPAIGN_VARIATION:
+                    return "campaignVariation";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operand), operand, null);
             }
@@ -129,6 +132,8 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Enums
                     return SegmentOperatorValueEnum.BROWSER_VERSION;
                 case "os_version":
                     return SegmentOperatorValueEnum.OS_VERSION;
+                case "campaignVariation":
+                    return SegmentOperatorValueEnum.WEB_CAMPAIGN_VARIATION;
                 default:
                     throw new ArgumentException("No enum constant with value " + value);
             }

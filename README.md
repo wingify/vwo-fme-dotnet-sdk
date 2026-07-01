@@ -119,6 +119,7 @@ The `VWOContext` object uniquely identifies users and supports targeting and seg
 | `CustomVariables`     | Custom attributes for targeting.                                             | No           | `Dictionary<string, object>` |
 | `UserAgent`           | User agent string for identifying the user's browser and operating system.   | No           | `string`             |
 | `IpAddress`           | IP address of the user.                                                      | No           | `string`             |
+| `PlatformVariables`   | Platform specific variables like web testing campaigns.                      | No           | `Dictionary<string, object>` |
 
 ### Example
 ```csharp
@@ -127,10 +128,29 @@ var context = new VWOContext
     Id = "unique_user_id",
     CustomVariables = new Dictionary<string, object> { { "age", 25 }, { "location", "US" } },
     UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-    IpAddress = "1.1.1.1"
+    IpAddress = "1.1.1.1",
+    PlatformVariables = new Dictionary<string, object>
+    {
+        // Reference example only.
+        // In production, fetch campaign assignments using script run in frontend and pass that object to backend as webTestingCampaigns.
+        { "webTestingCampaigns", "{\"122\":\"1\",\"130\":\"2\"}" }
+    }
 };
 
 ```
+
+## Web testing pre-segmentation
+
+Server-side flag decisions can align with **Web Testing** (browser) experiments. **Campaign assignments are typically read on the frontend** (for example, VWO cookies) and sent to your server; pass them in `PlatformVariables["webTestingCampaigns"]` as a map of **campaign ID -> variation ID** (strings), or as a **JSON string** of that object.
+
+Pre-segment rules in the VWO dashboard can use the **`campaignVariation`** operator:
+
+| Operand pattern | Meaning |
+| --------------- | ------- |
+| `C` | User is in campaign `C` (any variation). |
+| `!C` | User is **not** in campaign `C`. |
+| `C_V` | User is in campaign `C` with variation `V`. |
+| `C_!V` | User is in campaign `C` and assigned variation is **not** `V`. |
 
 ---
 

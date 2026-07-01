@@ -6,7 +6,7 @@
     <AssemblyName>WingifyFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>Wingify.FME.Sdk</PackageId>
-    <Version>1.55.1</Version>
+    <Version>1.60.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -101,6 +101,7 @@
     <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Enums\SegmentOperandValueEnum.cs" Link="Packages\SegmentationEvaluator\Enums\SegmentOperandValueEnum.cs" />
     <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Enums\SegmentOperatorValueEnum.cs" Link="Packages\SegmentationEvaluator\Enums\SegmentOperatorValueEnum.cs" />
     <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Utils\SegmentUtil.cs" Link="Packages\SegmentationEvaluator\Utils\SegmentUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Packages\SegmentationEvaluator\Utils\WebTestingSegmentUtil.cs" Link="Packages\SegmentationEvaluator\Utils\WebTestingSegmentUtil.cs" />
     <Compile Include="..\WingifyFmeSdk\Packages\Storage\Connector.cs" Link="Packages\Storage\Connector.cs" />
     <Compile Include="..\WingifyFmeSdk\Packages\Storage\Storage.cs" Link="Packages\Storage\Storage.cs" />
 

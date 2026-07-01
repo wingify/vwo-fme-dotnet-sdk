@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.60.0] - 2026-07-01
+
+### Added
+
+- Support for **Web Testing pre-segmentation**: campaign segmentation can use the `campaignVariation` operand. The SDK evaluates it against **`context.PlatformVariables["webTestingCampaigns"]`**, a map of Web Testing campaign ID → variation ID (plain object or JSON string). Supported operand values in settings: `122` (user in campaign), `122_2` (exact variation), `122_!1` (in campaign but not variation 1), `!122` (not in campaign).
+
+  ```csharp
+  using WingifyFmeSdk;
+  using WingifyFmeSdk.Models.User;
+
+  var options = new WingifyInitOptions
+  {
+      AccountId = 123456,
+      SdkKey = "32-alpha-numeric-sdk-key"
+  };
+
+  var client = Wingify.Init(options);
+
+  // Correctly passing webTestingCampaigns
+  var webTestingCampaigns = new Dictionary<string, object>
+  {
+      { "2", 23 } // Assigned to campaign 2, variation 23
+  };
+
+  var platformVariables = new Dictionary<string, object>
+  {
+      { "webTestingCampaigns", webTestingCampaigns }
+  };
+
+  var context = new WingifyContext
+  {
+      Id = "user-123",
+      PlatformVariables = platformVariables
+  };
+
+  var flag = client.GetFlag("feature-key", context);
+  ```
+
 ## [1.55.1] - 2026-06-29
 
 ### Fixed
@@ -20,7 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added support for tracking usage. When tracking is enabled (`isMAU` flag in settings), the SDK will automatically trigger a `vwo_feTrackUsage` event whenever a feature flag is evaluated via the `GetFlag` API, provided a primary `vwo_variationShown` impression call is not otherwise dispatched.
-
 ## [1.50.0] - 2026-05-29
 
 This release introduces **Wingify** as the primary SDK branding and package namespace, while keeping existing **VWO** integrations fully supported.

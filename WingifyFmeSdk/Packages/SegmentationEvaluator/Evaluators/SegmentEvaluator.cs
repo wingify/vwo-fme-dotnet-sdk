@@ -67,6 +67,8 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Evaluators
                     return new SegmentOperandEvaluator().EvaluateStringOperandDSL(subDsl, context, SegmentOperatorValueEnum.BROWSER_VERSION);
                 case SegmentOperatorValueEnum.OS_VERSION:
                     return new SegmentOperandEvaluator().EvaluateStringOperandDSL(subDsl, context, SegmentOperatorValueEnum.OS_VERSION);
+                case SegmentOperatorValueEnum.WEB_CAMPAIGN_VARIATION:
+                    return new SegmentOperandEvaluator().EvaluateCampaignVariationDSL(subDsl, context);
                 default:
                     return false;
             }

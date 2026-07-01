@@ -129,6 +129,52 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Core
         }
 
         /// <summary>
+        /// Recursively checks if any node in the DSL tree is a campaignVariation operand.
+        /// </summary>
+        /// <param name="dsl">The DSL JSON token to check.</param>
+        /// <returns>True if a campaignVariation node is found, otherwise false.</returns>
+        private bool HasCampaignVariationNode(JToken dsl)
+        {
+            // Base case: if it's not a JSON object, it cannot contain operators as keys.
+            if (dsl == null || dsl.Type != JTokenType.Object)
+            {
+                return false;
+            }
+
+            foreach (var property in dsl.Children<JProperty>())
+            {
+                // If the current node's key is the target operand, return true immediately.
+                if (property.Name == "web_campaign_variation" || property.Name == "campaignVariation")
+                {
+                    return true;
+                }
+
+                // If the value is an array (e.g. wrapper operators like "and": [ ... ]), recursively check each item.
+                if (property.Value.Type == JTokenType.Array)
+                {
+                    foreach (var subDsl in property.Value.Children())
+                    {
+                        if (HasCampaignVariationNode(subDsl))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                // If the value is another object, recurse into it.
+                else if (property.Value.Type == JTokenType.Object)
+                {
+                    if (HasCampaignVariationNode(property.Value))
+                    {
+                        return true;
+                    }
+                }
+            }
+            
+            // Reached the end of the tree without finding the target operand.
+            return false;
+        }
+
+        /// <summary>
         /// This method evaluates the segmentation for the user
         /// </summary>
         /// <param name="dsl"></param>
@@ -139,6 +185,18 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Core
             try
             {
                 JToken dslNodes = dsl is string ? JToken.Parse(dsl.ToString()) : JToken.FromObject(dsl);
+
+                // If the DSL contains any campaignVariation node but no webTestingCampaigns was provided, fail immediately.
+                // This covers NOT/OR/AND wrappers too — there is no web testing data to evaluate against.
+                if (HasCampaignVariationNode(dslNodes))
+                {
+                    var platformVariables = evaluator?.context?.PlatformVariables;
+                    if (platformVariables == null || !platformVariables.ContainsKey("webTestingCampaigns") || platformVariables["webTestingCampaigns"] == null)
+                    {
+                        return false;
+                    }
+                }
+
                 return evaluator.IsSegmentationValid(dslNodes, properties);
             }
            catch (Exception exception)

@@ -35,6 +35,7 @@ namespace WingifyFmeSdk.Models.User
         private string _vwo_uuid;
         private long? _vwo_sessionId;
         private string bucketingSeed;
+        private Dictionary<string, object> platformVariables = new Dictionary<string, object>();
 
         public string Id
         {
@@ -138,6 +139,11 @@ namespace WingifyFmeSdk.Models.User
             return _vwo_sessionId;
         }
 
+        public Dictionary<string, object> PlatformVariables
+        {
+            get { return platformVariables; }
+            set { platformVariables = value; }
+        }
         
     }
 }

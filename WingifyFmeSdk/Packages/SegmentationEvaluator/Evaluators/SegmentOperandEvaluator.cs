@@ -187,6 +187,73 @@ namespace WingifyFmeSdk.Packages.SegmentationEvaluator.Evaluators
         }
 
         /// <summary>
+        /// Evaluates Web Testing pre-segmentation against <c>context.PlatformVariables["webTestingCampaigns"]</c>.
+        /// Operand encoding: "C" (in Campaign, any variation), "C_V", "C_!V", "!C" (not in Campaign C).
+        /// </summary>
+        /// <param name="campaignVariationOperand">The DSL operand specifying the campaign variation check.</param>
+        /// <param name="context">The WingifyContext object containing PlatformVariables.</param>
+        /// <returns>True if the user's web testing campaign variation assignments match the criteria, otherwise false.</returns>
+        public bool EvaluateCampaignVariationDSL(JToken campaignVariationOperand, WingifyContext context)
+        {
+            // Settings JSON often deserializes campaign ids as numbers; coerce before matching DSL tokens.
+            string operandString = null;
+            if (campaignVariationOperand.Type == JTokenType.Integer || campaignVariationOperand.Type == JTokenType.Float)
+            {
+                operandString = campaignVariationOperand.ToString();
+            }
+            else if (campaignVariationOperand.Type == JTokenType.String)
+            {
+                operandString = campaignVariationOperand.ToString();
+            }
+
+            if (operandString == null)
+            {
+                string type = campaignVariationOperand.Type.ToString().ToLower();
+                LogManager.GetInstance().ErrorLog(
+                    "INVALID_WEB_TESTING_CAMPAIGN_VARIATION_OPERAND_TYPE",
+                    new Dictionary<string, string> { { "type", type } },
+                    new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() }, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
+                return false;
+            }
+
+            // Empty operand is invalid.
+            if (operandString.Length == 0)
+            {
+                LogManager.GetInstance().ErrorLog(
+                    "INVALID_WEB_TESTING_CAMPAIGN_VARIATION_OPERAND_EMPTY",
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() }, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
+                return false;
+            }
+
+            // All spaces is invalid.
+            string trimmedCampaignVariationOperand = operandString.Trim();
+            if (trimmedCampaignVariationOperand.Length == 0)
+            {
+                LogManager.GetInstance().ErrorLog(
+                    "INVALID_WEB_TESTING_CAMPAIGN_VARIATION_OPERAND_EMPTY",
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() }, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
+                return false;
+            }
+
+            // Parse the campaigns from the context.
+            var assignedVariationsByCampaignId = WebTestingSegmentUtil.ParseWebTestingCampaignsFromContext(context);
+            var resultObj = WebTestingSegmentUtil.EvaluateWebTestingCampaignVariation(trimmedCampaignVariationOperand, assignedVariationsByCampaignId);
+
+            // Invalid format of the operand.
+            if (resultObj.invalidFormat)
+            {
+                LogManager.GetInstance().ErrorLog(
+                    "INVALID_WEB_TESTING_CAMPAIGN_VARIATION_OPERAND_FORMAT",
+                    new Dictionary<string, string> { { "operand", trimmedCampaignVariationOperand } },
+                    new Dictionary<string, object> { { "an", ApiEnum.GET_FLAG.GetValue() }, { "uuid", context.VwoUuid }, { "sId", context.VwoSessionId } });
+            }
+
+            return resultObj.result;
+        }
+
+        /// <summary>
         /// Evaluates a given string tag value against a DSL operand value.
         /// </summary>
         /// <param name="dslOperandValue">The DSL operand string (e.g., "contains(\"value\")").</param>
