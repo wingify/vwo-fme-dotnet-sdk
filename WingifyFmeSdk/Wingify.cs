@@ -157,24 +157,17 @@ namespace WingifyFmeSdk
             }
 
             var settingsManager = vwoBuilder.GetSettingsManager();
-            if(!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
+            if (!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
             {
                 EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
             }
 
-            long? usageStatsAccountId = null;
-            
-            if (!string.IsNullOrEmpty(originalSettingsString))
-            {
-                var settingsDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
-                
-                if (settingsDict != null && settingsDict.ContainsKey("usageStatsAccountId") && settingsDict["usageStatsAccountId"] != null)
-                {
-                    usageStatsAccountId = Convert.ToInt64(settingsDict["usageStatsAccountId"]);
-                }
-            }
-            
-            if(usageStatsAccountId.HasValue)
+            var internalEventsThrottleService = InternalEventsThrottleService.Default;
+            var settingsDocument = InternalEventsSamplingUtil.ParseSettingsDocument(originalSettingsString);
+
+            long? usageStatsAccountId = InternalEventsSamplingUtil.GetUsageStatsAccountId(settingsDocument);
+            if (usageStatsAccountId.HasValue
+                && internalEventsThrottleService.ShouldSendUsageStatsEvent(settingsDocument))
             {
                 EventUtil.SendSDKUsageStatsEvent((int)usageStatsAccountId.Value);
             }

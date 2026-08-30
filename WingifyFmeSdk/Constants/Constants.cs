@@ -94,5 +94,13 @@ namespace WingifyFmeSdk.Constants
         public const int VARIATION_IS_PART_OF_HOLDOUT = 1;
         public const int VARIATION_NOT_PART_OF_HOLDOUT = 2;
         public const string NOT_IN_HOLDOUT_KEY_PREFIX = "_vwo_not_in_holdout_";
+
+        // Internal events sampling constants (.NET uses server runtime only)
+        public const string INTERNAL_EVENTS_SAMPLING_KEY = "sampling";
+        public const string INTERNAL_EVENTS_ALWAYS_APPLY_SAMPLING_KEY = "alwaysApplySampling";
+        public const string INTERNAL_EVENTS_USAGE_SAMPLING_KEY = "usage";
+        public const string INTERNAL_EVENTS_DEBUG_SAMPLING_KEY = "debug";
+        public const int INTERNAL_EVENTS_DEFAULT_SERVER_SAMPLING_PERCENT = 10;
+        public const bool INTERNAL_EVENTS_DEFAULT_ALWAYS_APPLY_SAMPLING = false;
     }
 }

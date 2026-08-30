@@ -47,6 +47,7 @@ namespace WingifyFmeSdk.Services
         private static SettingsManager instance;
         private int settingsFetchTime;
         private bool isSettingsValid = false;
+        private string originalSettingsDocument;
         public bool isProxyUrlProvided = false;
         public string proxyUrl = "";
 
@@ -80,6 +81,23 @@ namespace WingifyFmeSdk.Services
             get { return accountId; }
         }
 
+        /// <summary>
+        /// Stores the raw settings document used for internal-event sampling.
+        /// </summary>
+        /// <param name="settingsDocument">The original settings JSON string.</param>
+        public void SetOriginalSettingsDocument(string settingsDocument)
+        {
+            originalSettingsDocument = settingsDocument;
+        }
+
+        /// <summary>
+        /// Returns the raw settings document used for internal-event sampling.
+        /// </summary>
+        /// <returns>The original settings JSON string, or null when unavailable.</returns>
+        public string GetOriginalSettingsDocument()
+        {
+            return originalSettingsDocument;
+        }
 
         /// <summary>
         /// Get the instance of SettingsManager
@@ -345,6 +363,7 @@ namespace WingifyFmeSdk.Services
                     {
                         LoggerService.Log(LogLevelEnum.INFO, "SETTINGS_FETCH_SUCCESS", null);
                         this.isSettingsValid = true;
+                        this.originalSettingsDocument = settings;
                         return settings;
                     }
                     else

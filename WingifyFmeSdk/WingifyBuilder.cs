@@ -140,6 +140,7 @@ namespace WingifyFmeSdk
             }
             // Store the original settings as a string
             originalSettings = settings;
+            SettingsManager.GetInstance()?.SetOriginalSettingsDocument(settings);
 
             try
             {
@@ -206,6 +207,7 @@ namespace WingifyFmeSdk
                 if (!forceFetch)
                 {
                     originalSettings = settings;
+                    SettingsManager.GetInstance()?.SetOriginalSettingsDocument(settings);
                 }
 
                 isSettingsFetchInProgress = false;

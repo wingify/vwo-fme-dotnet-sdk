@@ -25,6 +25,7 @@ using WingifyFmeSdk.Packages.Logger.Core;
 using WingifyFmeSdk.Enums;
 using ConstantsNamespace = WingifyFmeSdk.Constants;
 using Newtonsoft.Json;
+using WingifyFmeSdk.Services;
 
 namespace WingifyFmeSdk.Utils
 {
@@ -76,12 +77,31 @@ namespace WingifyFmeSdk.Utils
         }
 
         /// <summary>
-        /// Sends a debug event to VWO.
+        /// Sends a debug event to VWO after applying sampled-event sampling rules.
         /// </summary>
         /// <param name="eventProps">The properties for the event.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
         public static void SendDebugEventToVWO(Dictionary<string, object> eventProps = null)
         {
+            string messageTemplateKey = eventProps != null && eventProps.ContainsKey("msg_t")
+                ? eventProps["msg_t"]?.ToString()
+                : null;
+
+            // Only high-volume error keys are subject to debug sampling.
+            bool isSampledDebugEvent = InternalEventsSamplingUtil.IsSampledDebugErrorTemplateKey(messageTemplateKey);
+            // If the event is sampled, we need to check if it should be sent based on the sampling rules
+            if (isSampledDebugEvent)
+            {
+                string settingsJson = SettingsManager.GetInstance()?.GetOriginalSettingsDocument();
+                var settingsDocument = InternalEventsSamplingUtil.ParseSettingsDocument(settingsJson);
+
+                // Drop sampled debug events that fail the configured sampling check.
+                if (!InternalEventsThrottleService.Default.ShouldSendSampledDebugEvent(settingsDocument))
+                {
+                    return;
+                }
+            }
+
             // Create query parameters
             var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.DEBUGGER_EVENT.GetValue());
 

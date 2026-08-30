@@ -6,7 +6,7 @@
     <AssemblyName>WingifyFmeSdk</AssemblyName>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <PackageId>Wingify.FME.Sdk</PackageId>
-    <Version>1.60.0</Version>
+    <Version>1.62.0</Version>
     <Authors>VWO devs</Authors>
     <Company>Wingify</Company>
     <Product>VWO</Product>
@@ -37,6 +37,7 @@
 
     <!-- Constants -->
     <Compile Include="..\WingifyFmeSdk\Constants\Constants.cs" Link="Constants\Constants.cs" />
+    <Compile Include="..\WingifyFmeSdk\Constants\SampledDebugErrorTemplateKeys.cs" Link="Constants\SampledDebugErrorTemplateKeys.cs" />
 
     <!-- Decorators -->
     <Compile Include="..\WingifyFmeSdk\Decorators\StorageDecorator.cs" Link="Decorators\StorageDecorator.cs" />
@@ -113,6 +114,7 @@
     <Compile Include="..\WingifyFmeSdk\Services\StorageService.cs" Link="Services\StorageService.cs" />
     <Compile Include="..\WingifyFmeSdk\Services\UrlService.cs" Link="Services\UrlService.cs" />
     <Compile Include="..\WingifyFmeSdk\Services\BatchEventQueue.cs" Link="Services\BatchEventQueue.cs" />
+    <Compile Include="..\WingifyFmeSdk\Services\InternalEventsThrottleService.cs" Link="Services\InternalEventsThrottleService.cs" />
 
     <!-- Utils -->
     <Compile Include="..\WingifyFmeSdk\Utils\BrandContext.cs" Link="Utils\BrandContext.cs" />
@@ -133,6 +135,7 @@
     <Compile Include="..\WingifyFmeSdk\Utils\EventUtil.cs" Link="Utils\EventUtil.cs" />
     <Compile Include="..\WingifyFmeSdk\Utils\SettingsJsonConverterUtil.cs" Link="Utils\SettingsJsonConverterUtil.cs" />
     <Compile Include="..\WingifyFmeSdk\Utils\DebuggerServiceUtil.cs" Link="Utils\DebuggerServiceUtil.cs" />
+    <Compile Include="..\WingifyFmeSdk\Utils\InternalEventsSamplingUtil.cs" Link="Utils\InternalEventsSamplingUtil.cs" />
     <Compile Include="..\WingifyFmeSdk\Utils\UserIdUtil.cs" Link="Utils\UserIdUtil.cs" />
     <Compile Include="..\WingifyFmeSdk\Utils\AliasingUtil.cs" Link="Utils\AliasingUtil.cs" />
     <Compile Include="..\WingifyFmeSdk\Utils\HoldoutUtil.cs" Link="Utils\HoldoutUtil.cs" />

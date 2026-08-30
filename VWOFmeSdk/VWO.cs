@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using VWOFmeSdk.Models.User;
 using WingifyFmeSdk;
 using WingifyFmeSdk.Utils;
+using WingifyFmeSdk.Services;
 
 namespace VWOFmeSdk
 {
@@ -134,24 +135,16 @@ namespace VWOFmeSdk
             }
 
             var settingsManager = vwoBuilder.GetSettingsManager();
-            if(!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
+            if (!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
             {
                 WingifyFmeSdk.Utils.EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
             }
 
-            long? usageStatsAccountId = null;
-            
-            if (!string.IsNullOrEmpty(originalSettingsString))
-            {
-                var settingsDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(originalSettingsString);
-                
-                if (settingsDict != null && settingsDict.ContainsKey("usageStatsAccountId"))
-                {
-                    usageStatsAccountId = Convert.ToInt64(settingsDict["usageStatsAccountId"]);
-                }
-            }
-            
-            if(usageStatsAccountId.HasValue)
+            var internalEventsThrottleService = InternalEventsThrottleService.Default;
+            var settingsDocument = InternalEventsSamplingUtil.ParseSettingsDocument(originalSettingsString);
+            long? usageStatsAccountId = InternalEventsSamplingUtil.GetUsageStatsAccountId(settingsDocument);
+            if (usageStatsAccountId.HasValue
+                && internalEventsThrottleService.ShouldSendUsageStatsEvent(settingsDocument))
             {
                 WingifyFmeSdk.Utils.EventUtil.SendSDKUsageStatsEvent((int)usageStatsAccountId.Value);
             }
