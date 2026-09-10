@@ -75,7 +75,7 @@ namespace WingifyFmeSdk.Utils
             var requestQueryParams = new RequestQueryParams(
                 eventName,
                 accountId,
-                isUsageStatsEvent ? null : sdkKey, // Only set env if not usage stats event
+                sdkKey,
                 visitorUserAgent,
                 ipAddress,
                 GenerateEventUrl(),
@@ -608,11 +608,9 @@ namespace WingifyFmeSdk.Utils
         /// <summary>
         /// Generates a payload for the SDK init called event
         /// </summary>
-        /// <param name="eventName"></param>
-        /// <param name="settingsFetchTime"></param>
-        /// <param name="sdkInitTime"></param>
-        /// <returns></returns>
-        public static Dictionary<string, object> GetSdkInitEventPayload(string eventName, int? settingsFetchTime = null, int? sdkInitTime = null)
+        /// <param name="eventName">The name of the event.</param>
+        /// <returns>The constructed payload with required fields.</returns>
+        public static Dictionary<string, object> GetSdkInitEventPayload(string eventName)
         {
             // Get user ID and properties
             var userId = SettingsManager.GetInstance().AccountId.ToString() + "_" + SettingsManager.GetInstance().SdkKey;
@@ -623,12 +621,10 @@ namespace WingifyFmeSdk.Utils
             properties.D.Event.Props.VwoEnvKey = SettingsManager.GetInstance().SdkKey;
             properties.D.Event.Props.Product = ConstantsNamespace.Constants.FME;
 
-            // Create the data object
+            // Create the data object (timings + initConfig live on usage stats)
             var data = new Dictionary<string, object>
             {
-                { "isSDKInitialized", true },
-                { "settingsFetchTime", settingsFetchTime },
-                { "sdkInitTime", sdkInitTime }
+                { "isSDKInitialized", true }
             };
 
             properties.D.Event.Props.Data = data;
@@ -641,8 +637,16 @@ namespace WingifyFmeSdk.Utils
         /// </summary>
         /// <param name="eventName">The name of the event.</param>
         /// <param name="usageStatsAccountId">The account ID for usage statistics.</param>
+        /// <param name="settingsFetchTime">Time taken to fetch settings in milliseconds.</param>
+        /// <param name="sdkInitTime">Time taken to initialize the SDK in milliseconds.</param>
+        /// <param name="initOptions">SDK initialization options included as initConfig for observability.</param>
         /// <returns>The constructed payload with required fields.</returns>
-        public static Dictionary<string, object> GetSDKUsageStatsEventPayload(string eventName, int usageStatsAccountId)
+        public static Dictionary<string, object> GetSDKUsageStatsEventPayload(
+            string eventName,
+            int usageStatsAccountId,
+            int? settingsFetchTime = null,
+            int? sdkInitTime = null,
+            WingifyInitOptions initOptions = null)
         {
             // Build userId as accountId_sdkKey (not usageStatsAccountId_sdkKey)
             var userId = SettingsManager.GetInstance().AccountId.ToString() + "_" + SettingsManager.GetInstance().SdkKey;
@@ -662,7 +666,68 @@ namespace WingifyFmeSdk.Utils
             properties.D.Event.Props.Product = ConstantsNamespace.Constants.FME;
             properties.D.Event.Props.VwoMeta = UsageStatsUtil.GetInstance().GetUsageStats();
 
+            var data = new Dictionary<string, object>
+            {
+                { "settingsFetchTime", settingsFetchTime },
+                { "sdkInitTime", sdkInitTime },
+                { "initConfig", BuildInitConfig(initOptions) }
+            };
+            properties.D.Event.Props.Data = data;
+
             return ConvertEventArchPayloadToDictionary(properties);
+        }
+
+        /// <summary>
+        /// Builds a JSON-serializable map of SDK init options for observability (initConfig).
+        /// Excludes non-serializable runtime dependencies (callbacks, connectors, builders).
+        /// </summary>
+        /// <param name="options">The SDK initialization options to convert into initConfig.</param>
+        /// <returns>A plain map of serializable init option values, or null if options is null.</returns>
+        private static Dictionary<string, object> BuildInitConfig(WingifyInitOptions options)
+        {
+            if (options == null)
+            {
+                return null;
+            }
+
+            var initConfig = new Dictionary<string, object>
+            {
+                { "sdkKey", options.SdkKey },
+                { "accountId", options.AccountId },
+                { "logger", options.Logger },
+                { "pollInterval", options.PollInterval },
+                { "gatewayService", options.GatewayService },
+                { "isUsageStatsDisabled", options.IsUsageStatsDisabled },
+                { "_vwo_meta", options.VwoMetaData },
+                { "isAliasingEnabled", options.IsAliasingEnabled },
+                { "proxyUrl", options.ProxyUrl },
+                { "isBatchingDisabled", options.IsBatchingDisabled },
+                { "maxConcurrentThreads", options.MaxConcurrentThreads },
+                { "maxRequestQueueCapacity", options.MaxRequestQueueCapacity },
+                // Runtime dependencies are not JSON-safe; record presence only
+                { "integrations", options.Integrations != null },
+                { "networkClientInterface", options.NetworkClientInterface != null },
+                { "segmentEvaluator", options.SegmentEvaluator != null },
+                { "storage", options.Storage != null },
+                { "settings", !string.IsNullOrEmpty(options.Settings) }
+            };
+
+            if (options.RetryConfig != null)
+            {
+                initConfig["retryConfig"] = options.RetryConfig;
+            }
+
+            if (options.BatchEventData != null)
+            {
+                initConfig["batchEventData"] = new Dictionary<string, object>
+                {
+                    { "eventsPerRequest", options.BatchEventData.EventsPerRequest },
+                    { "requestTimeInterval", options.BatchEventData.RequestTimeInterval },
+                    { "flushCallback", options.BatchEventData.FlushCallback != null }
+                };
+            }
+
+            return initConfig;
         }
 
         /// <summary>

@@ -40,9 +40,7 @@ namespace WingifyFmeSdk.Utils
         /// Sends an init called event to VWO.
         /// This event is triggered when the init function is called.
         /// </summary>
-        /// <param name="settingsFetchTime">Time taken to fetch settings in milliseconds.</param>
-        /// <param name="sdkInitTime">Time taken to initialize the SDK in milliseconds.</param>
-        public static void SendSdkInitEvent(int? settingsFetchTime = null, int? sdkInitTime = null)
+        public static void SendSdkInitEvent()
         {
             try
             {
@@ -50,7 +48,7 @@ namespace WingifyFmeSdk.Utils
                 var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.SDK_INIT_EVENT.GetValue());
 
                 // Create the payload with required fields
-                var payload = NetworkUtil.GetSdkInitEventPayload(EventEnum.SDK_INIT_EVENT.GetValue(), settingsFetchTime, sdkInitTime);
+                var payload = NetworkUtil.GetSdkInitEventPayload(EventEnum.SDK_INIT_EVENT.GetValue());
 
                 // Check if batching is available through Wingify instance
                 var vwoInstance = WingifyClient.GetInstance();
@@ -74,7 +72,14 @@ namespace WingifyFmeSdk.Utils
         /// This event is triggered when the SDK is initialized.
         /// </summary>
         /// <param name="usageStatsAccountId">The account ID for usage statistics</param>
-        public static void SendSDKUsageStatsEvent(int usageStatsAccountId)
+        /// <param name="settingsFetchTime">Time taken to fetch settings in milliseconds</param>
+        /// <param name="sdkInitTime">Time taken to initialize the SDK in milliseconds</param>
+        /// <param name="initOptions">SDK initialization options included as initConfig</param>
+        public static void SendSDKUsageStatsEvent(
+            int usageStatsAccountId,
+            int? settingsFetchTime = null,
+            int? sdkInitTime = null,
+            WingifyInitOptions initOptions = null)
         {
             try
             {
@@ -82,7 +87,12 @@ namespace WingifyFmeSdk.Utils
                 var properties = NetworkUtil.GetEventsBaseProperties(EventEnum.USAGE_STATS_EVENT.GetValue(), null, null, true, usageStatsAccountId);
 
                 // Create the payload with required fields
-                var payload = NetworkUtil.GetSDKUsageStatsEventPayload(EventEnum.USAGE_STATS_EVENT.GetValue(), usageStatsAccountId);
+                var payload = NetworkUtil.GetSDKUsageStatsEventPayload(
+                    EventEnum.USAGE_STATS_EVENT.GetValue(),
+                    usageStatsAccountId,
+                    settingsFetchTime,
+                    sdkInitTime,
+                    initOptions);
 
                 // Check if batching is available through Wingify instance
                 var vwoInstance = WingifyClient.GetInstance();

@@ -276,7 +276,7 @@ namespace WingifyFmeSdk.Services
                 ResponseModel response = networkInstance.Get(request);
 
                 // stop timer for settings fetch               
-                var settingsFetchTime = (int)(DateTime.UtcNow - settingsFetchStartTime).TotalMilliseconds;
+                this.settingsFetchTime = (int)(DateTime.UtcNow - settingsFetchStartTime).TotalMilliseconds;
 
                 
                 // Handle successful response

@@ -137,7 +137,7 @@ namespace VWOFmeSdk
             var settingsManager = vwoBuilder.GetSettingsManager();
             if (!wasInitialized && settingsManager != null && settingsManager.IsSettingsValid)
             {
-                WingifyFmeSdk.Utils.EventUtil.SendSdkInitEvent(settingsManager.SettingsFetchTime, sdkInitTime);
+                WingifyFmeSdk.Utils.EventUtil.SendSdkInitEvent();
             }
 
             var internalEventsThrottleService = InternalEventsThrottleService.Default;
@@ -146,7 +146,12 @@ namespace VWOFmeSdk
             if (usageStatsAccountId.HasValue
                 && internalEventsThrottleService.ShouldSendUsageStatsEvent(settingsDocument))
             {
-                WingifyFmeSdk.Utils.EventUtil.SendSDKUsageStatsEvent((int)usageStatsAccountId.Value);
+                int? settingsFetchTime = settingsManager != null ? settingsManager.SettingsFetchTime : (int?)null;
+                WingifyFmeSdk.Utils.EventUtil.SendSDKUsageStatsEvent(
+                    (int)usageStatsAccountId.Value,
+                    settingsFetchTime,
+                    sdkInitTime,
+                    options);
             }
 
             return instance;
